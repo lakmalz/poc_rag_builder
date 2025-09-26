@@ -1,0 +1,1117 @@
+[
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Mask/index.tsx::__function",
+    "name": "__function",
+    "file": "Custom-ui/src/components/Mask/index.tsx",
+    "props": {},
+    "description": "A functional React component with side effects capabilities.",
+    "raw": "import { useEffect, type HTMLAttributes } from \"react\";\nimport { a, useTransition } from \"@react-spring/web\";\nimport cx from \"clsx\";\nimport { AnimatedDiv } from '@/components/Animation';\n\nexport type MaskProps = OverWrite<\n  HTMLAttributes<HTMLDivElement>,\n  {\n    open: boolean;\n  }\n> & {\n  transitionConfig?: object;\n};\n\nconst Mask = ({\n  className,\n  open,\n  transitionConfig,\n  style,\n  ...props\n}: MaskProps) => {\n  const transitions = useTransition(\n    open,\n    transitionConfig\n      ? { ...transitionConfig }\n      : {\n        from: { opacity: 0 },\n        enter: { opacity: 1 },\n        leave: { opacity: 0 },\n        reverse: open,\n      }\n  );\n\n  return transitions(\n    (styles, item) =>\n      item && (\n        <AnimatedDiv\n          className={cx(\n            \"fixed left-0 top-0 w-full h-full bg-[rgba(0,0,0,0.4)] z-[200] contain-strict\",\n            className\n          )}\n          style={{ ...style, ...styles }}\n          {...props}\n        />\n      )\n  );\n};\n\nexport default Mask;\n",
+    "extractionMethod": "automatic",
+    "tags": {},
+    "directory": "src/components/Mask",
+    "componentType": "functional",
+    "features": [
+      "effects"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Anchor/index.tsx::Anchor",
+    "name": "Anchor",
+    "file": "Custom-ui/src/components/Anchor/index.tsx",
+    "props": {},
+    "description": "A Anchor page component with stateful, side effects capabilities.",
+    "raw": "\"use client\";\nimport {\n  useEffect,\n  useCallback,\n  MouseEvent,\n  Dispatch,\n  useReducer,\n} from \"react\";\nimport { useMainScrollerDistance } from \"@/hooks/useMainScroller\";\nimport cx from \"clsx\";\n\nexport interface AnchorItem {\n  title: string;\n  href: string;\n}\n\ninterface AnchorState {\n  isActive: string;\n  isUserNaved: boolean;\n  defaultActive: string;\n}\n\nconst AnchorReducer = (\n  state: AnchorState,\n  action: { type: string; value: string | boolean }\n) => {\n  switch (action.type) {\n    case \"setIsActive\":\n      return { ...state, isActive: action.value as string };\n    case \"setIsUserNaved\":\n      return { ...state, isUserNaved: action.value as boolean };\n    case \"setDefaultActive\":\n      return { ...state, defaultActive: action.value as string };\n    default:\n      return state;\n  }\n};\n\nconst Anchor: React.FC<{ items: AnchorItem[] }> = ({ items }) => {\n  const [state, dispatch] = useReducer(AnchorReducer, {\n    isActive: items[0].href,\n    isUserNaved: false,\n    defaultActive: items[0].href,\n  });\n  //   const [isActive, setIsActive] = useState(items[0].href);\n  //   const [isUserNaved, setIsUserNaved] = useState(false);\n  //   const [defaultActive, setDefaultActive] = useState(items[0].href);\n\n  return (\n    <>\n      {items.map((item) => (\n        <NavItem\n          key={item.href}\n          {...item}\n          anchorState={state}\n          anchorDispatch={dispatch}\n        />\n      ))}\n    </>\n  );\n};\n\nconst NavItem: React.FC<{\n  title: string;\n  href: string;\n  anchorState: AnchorState;\n  anchorDispatch: Dispatch<{\n    type: string;\n    value: string | boolean;\n  }>;\n}> = ({ title, href, anchorState, anchorDispatch }) => {\n  const mainScrollerDistance = useMainScrollerDistance();\n  const { isActive, isUserNaved, defaultActive } = anchorState;\n\n  const handleClick = useCallback(\n    (e: MouseEvent) => {\n      e.preventDefault();\n      const targetElement = document.getElementById(href);\n      if (targetElement) {\n        anchorDispatch({ type: \"setIsUserNaved\", value: true });\n        anchorDispatch({ type: \"setIsActive\", value: href });\n        targetElement.scrollIntoView({ behavior: \"smooth\" });\n      }\n      setTimeout(\n        () =>\n          anchorDispatch({\n            type: \"setIsUserNaved\",\n            value: false,\n          }),\n        1000\n      );\n    },\n    [href]\n  );\n\n  useEffect(() => {\n    const handleScroll = () => {\n      if (isUserNaved) return;\n      const targetElement = document.getElementById(href);\n      if (!targetElement) return;\n      const rect = targetElement.getBoundingClientRect();\n      if (href === defaultActive) {\n        if (rect.bottom >= 2)\n          anchorDispatch({ type: \"setIsActive\", value: \"aboutUs\" });\n        return;\n      }\n      if (rect.top <= 2 && rect.bottom >= 2)\n        anchorDispatch({ type: \"setIsActive\", value: href });\n    };\n    window.addEventListener(\"scroll\", handleScroll);\n    return () => window.removeEventListener(\"scroll\", handleScroll);\n  }, [href, isUserNaved]);\n\n  return (\n    <div\n      className={cx(\n        \"flex items-center mx-24px h-full no-underline cursor-pointer\",\n        mainScrollerDistance > 1\n          ? \"text-#323233 hover:text-#FFA14A\"\n          : \"text-#FFFFFF\",\n        isActive === href && \"border-b-3px font-semibold\",\n        isActive === href && mainScrollerDistance > 1 && \"!text-#FFA14A\"\n      )}\n      onClick={handleClick}\n    >\n      {title}\n    </div>\n  );\n};\n\nexport default Anchor;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Anchor",
+    "componentType": "functional",
+    "features": [
+      "stateful"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Animation/elements.tsx::AnimatedDiv",
+    "name": "AnimatedDiv",
+    "file": "Custom-ui/src/components/Animation/elements.tsx",
+    "props": {},
+    "description": "A functional React component.",
+    "raw": "import { a } from '@react-spring/web';\n\nexport const AnimatedDiv = (props: AnimatedDivProps) => (\n  <a.div {...props} />\n);",
+    "extractionMethod": "automatic",
+    "tags": {},
+    "directory": "src/components/Animation",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Tabs/BasicTabs/index.tsx::BasicTabs",
+    "name": "BasicTabs",
+    "file": "Custom-ui/src/components/Tabs/BasicTabs/index.tsx",
+    "props": {},
+    "description": "A BasicTabs layout component with stateful capabilities.",
+    "raw": "'use client';\nimport React, { useState, useCallback, type JSX } from 'react';\nimport cx from 'clsx';\nimport TabNavItem from './TabNavItem';\nimport TabContent from './TabContent';\n\nexport interface Item {\n  id: number;\n  title: string;\n  content: JSX.Element;\n}\n\ninterface TabsProps {\n  items: Item[];\n  defaultActiveId: number;\n  wrapperClassName?: string;\n  navClassName?: string;\n  navItemClassName?: string;\n  activeNavItemClassName?: string;\n  bodyClassName?: string;\n  onTabChange?: (id: number) => void;\n}\n\nconst BasicTabs: React.FC<TabsProps> = ({\n  items,\n  defaultActiveId,\n  navClassName,\n  navItemClassName,\n  activeNavItemClassName,\n  bodyClassName,\n  wrapperClassName,\n  onTabChange,\n}) => {\n  const [activeId, setActiveId] = useState(defaultActiveId);\n  const handleTabChange = useCallback((id: number) => {\n    setActiveId(id);\n    onTabChange?.(id);\n  }, []);\n  return (\n    <div\n      className={cx(\n        'pt-[26px] pb-[11px] px-[14px] flex flex-col rounded-[15px] bg-[#ffffff]',\n        wrapperClassName\n      )}\n    >\n      <div\n        className={cx(\n          'flex flex-row h-[36px] border-b border-b-solid border-[#EBEDF0] overflow-hidden',\n          navClassName\n        )}\n      >\n        {items.map((item) => (\n          <TabNavItem\n            title={item.title}\n            setActiveId={handleTabChange}\n            id={item.id}\n            activeId={activeId}\n            key={`${item.id}-tab`}\n            navItemClassName={navItemClassName}\n            activeNavItemClassName={activeNavItemClassName}\n          />\n        ))}\n      </div>\n      <div className={cx('py-[12px] w-full', bodyClassName)}>\n        {items.map((item) => (\n          <TabContent\n            activeId={activeId}\n            id={item.id}\n            content={item.content}\n            key={`${item.id}-content`}\n          />\n        ))}\n      </div>\n    </div>\n  );\n};\n\nexport default BasicTabs;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Tabs/BasicTabs",
+    "componentType": "functional",
+    "features": [
+      "stateful"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Button/index.tsx::Button",
+    "name": "Button",
+    "file": "Custom-ui/src/components/Button/index.tsx",
+    "props": {},
+    "description": "A button component with ref forwarding capabilities.",
+    "raw": "import React, {\n  createElement,\n  forwardRef,\n  type ReactNode,\n  type PropsWithChildren,\n} from 'react';\nimport cx from 'clsx';\nimport Spin from '@/components/Spin';\nimport renderReactNode from '@/utils/renderReactNode';\nimport './index.css';\n\nexport interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {\n  variant?: 'contained' | 'outlined' | 'text' | 'link';\n  color?: 'primary' | 'green' | 'white';\n  size?: 'mini' | 'small' | 'medium' | 'large';\n  shape?: 'rect' | 'circle' | 'round';\n  fullWidth?: boolean;\n  loading?: boolean;\n  icon?: ReactNode;\n  startIcon?: ReactNode;\n  endIcon?: ReactNode;\n  href?: string;\n  target?: '_blank' | '_self' | '_parent' | '_top';\n}\n\nconst Button = forwardRef<HTMLButtonElement, PropsWithChildren<Props>>(\n  (\n    {\n      children,\n      className,\n      variant = 'contained',\n      color = 'primary',\n      size = 'medium',\n      shape = 'rect',\n      disabled = false,\n      fullWidth = false,\n      loading = false,\n      icon,\n      startIcon,\n      endIcon,\n      ...props\n    },\n    _forwardRef\n  ) => {\n    return createElement(\n      props.href ? 'a' : 'button',\n      {\n        className: cx(\n          `fui-button fui-button--${variant} fui-button--${color} fui-button--${size} fui-button--${shape}`,\n          fullWidth && 'fui-button--fullWidth',\n          loading && 'is-loading',\n          disabled && 'is-disabled',\n          className\n        ),\n        ref: _forwardRef,\n        ...props,\n      },\n      <>\n        {startIcon && (\n          <span className=\"fui-button__icon\">{renderReactNode(startIcon)}</span>\n        )}\n        {children && (\n          <div\n            className={cx(\n              'flex flex-row h-full',\n              loading && 'cursor-not-allowed'\n            )}\n          >\n            <div className=\"w-24px h-24px\">\n              {loading && <Spin className=\"mr-8px text-1.4em \" />}\n            </div>\n            {children}\n          </div>\n        )}\n        {!children && icon && (\n          <span className=\"fui-button__icon\">{renderReactNode(icon)}</span>\n        )}\n        {endIcon && (\n          <span className=\"fui-button__icon\">{renderReactNode(endIcon)}</span>\n        )}\n        {loading && <Spin className=\"fui-button__loading\" />}\n      </>\n    );\n  }\n);\n\nexport default Button;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Button",
+    "componentType": "forwardRef",
+    "features": [
+      "ref-forwarding"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Canvas/index.tsx::Canvas",
+    "name": "Canvas",
+    "file": "Custom-ui/src/components/Canvas/index.tsx",
+    "props": {
+      "draw": {
+        "name": "draw",
+        "type": {
+          "name": "(ctx: CanvasRenderingContext2D) => void"
+        },
+        "required": true,
+        "description": "Callback function for draw",
+        "defaultValue": null
+      }
+    },
+    "description": "A functional React component with side effects capabilities.",
+    "raw": "import { useRef, useEffect, ComponentProps } from 'react';\n\ninterface CanvasProps extends ComponentProps<'canvas'> {\n  draw: (ctx: CanvasRenderingContext2D) => void;\n}\n\nexport const Canvas: React.FC<CanvasProps> = ({ draw, ...rest }) => {\n  const canvasRef = useRef<HTMLCanvasElement>(null);\n\n  useEffect(() => {\n    const canvas = canvasRef.current;\n    if (canvas) {\n      const ctx = canvas.getContext('2d');\n      if (ctx) {\n        draw(ctx);\n      }\n    }\n  }, [draw]);\n\n  return <canvas ref={canvasRef} {...rest} />;\n};\n\nexport default Canvas;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Canvas",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/utils/composeRef.ts::default",
+    "name": "default",
+    "file": "Custom-ui/src/utils/composeRef.ts",
+    "props": {},
+    "description": "A functional React component.",
+    "raw": "import type { Ref } from 'react';\n\nexport default function composeRef<T>(refs: Ref<T>[]): (ref: T) => void;\nexport default function composeRef<T>(...refs: Ref<T>[]): (ref: T) => void;\nexport default function composeRef<T>() {\n  let refs: Ref<T>[];\n  if (arguments.length === 1 && arguments[0] instanceof Array) refs = arguments[0];\n  else refs = Array.from(arguments);\n  return (ref: T) => {\n    refs.forEach((r) => {\n      if (r !== null && typeof r === 'object' && 'current' in r) (r as any).current = ref;\n      if (typeof r === 'function') r(ref);\n    });\n  };\n}\n",
+    "extractionMethod": "automatic",
+    "tags": {},
+    "directory": "src/utils",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/app/layout.tsx::default",
+    "name": "default",
+    "file": "Custom-ui/src/app/layout.tsx",
+    "props": {},
+    "description": "A default layout component.",
+    "raw": "import './globals.css';\nimport '/uno.css';\nimport { ModalRender } from '@/components/Modal';\n\nexport const metadata = {\n  title: 'Custome UI',\n  description: 'react component library by Ricy'\n};\n\nexport default function RootLayout({\n  children,\n}: {\n  children: React.ReactNode;\n}) {\n  return (\n    <html lang=\"en\">\n      <body className=\"min-h-100vh\">\n        <ModalRender />\n        {children}\n      </body>\n    </html>\n  );\n}\n",
+    "extractionMethod": "automatic",
+    "tags": {},
+    "directory": "src/app",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Dropdown/index.tsx::Dropdown",
+    "name": "Dropdown",
+    "file": "Custom-ui/src/components/Dropdown/index.tsx",
+    "props": {},
+    "description": "A tooltip component.",
+    "raw": "import React from \"react\";\nimport { safePolygon } from \"@floating-ui/react\";\nimport Popover, { PopoverProps, InteractionProps } from \"@/components/Popover\";\n\ntype DropdownProps = OverWrite<\n  PopoverProps,\n  { trigger?: \"hover\" | \"focus\" | \"click\"; interactionProps?: InteractionProps }\n>;\n\nconst Dropdown: React.FC<DropdownProps> = ({\n  Content,\n  trigger = \"hover\",\n  children,\n  options = {\n    placement: \"bottom-end\",\n  },\n  interactionProps = {\n    handleClose: safePolygon(),\n  },\n  ...props\n}) => {\n  return (\n    <Popover\n      Content={Content}\n      trigger={trigger}\n      options={options}\n      {...props}\n      interactionProps={interactionProps}\n      transitionStylesProps={{\n        duration: 200,\n        initial: { maxHeight: \"0px\" },\n        open: { maxHeight: \"500px\" },\n        common: { overflow: \"hidden\" },\n      }}\n    >\n      {children}\n    </Popover>\n  );\n};\n\nexport default Dropdown;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Dropdown",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Icons/index.tsx::Icons",
+    "name": "Icons",
+    "file": "Custom-ui/src/components/Icons/index.tsx",
+    "props": {},
+    "description": "A Icons page component.",
+    "raw": "import cx from 'clsx';\nimport { ComponentProps } from 'react';\n\ninterface IconProps extends ComponentProps<'svg'> {\n  iconClassName?: string;\n  className?: string;\n}\n\nexport const StarIcon: React.FC = () => {\n  return (\n    <svg\n      width=\"22\"\n      height=\"20\"\n      viewBox=\"0 0 22 20\"\n      xmlns=\"http://www.w3.org/2000/svg\"\n    >\n      <path\n        d=\"M13.3124 7.5703L11.0022 2.88933L8.69199 7.5703L3.52624 8.32092L7.26421 11.9645L6.38179 17.1094L11.0022 14.6803L15.6226 17.1094L14.7402 11.9645L18.4781 8.32092L13.3124 7.5703ZM20.7992 7.14245C21.1683 7.19608 21.3157 7.64967 21.0486 7.91001L16.3519 12.4882L17.4606 18.9528C17.5237 19.3204 17.1378 19.6007 16.8077 19.4271L11.0022 16.375L5.19666 19.4271C4.86653 19.6007 4.48068 19.3204 4.54373 18.9528L5.65249 12.4882L0.955723 7.91001C0.68864 7.64967 0.836019 7.19608 1.20512 7.14245L7.69589 6.19929L10.5986 0.317648C10.7637 -0.0168128 11.2406 -0.0168115 11.4057 0.317649L14.3085 6.19929L20.7992 7.14245Z\"\n        className=\"fill-#595A5B\"\n      />\n    </svg>\n  );\n};\n\nexport const CloseIcon: React.FC<IconProps> = ({ className }) => {\n  return (\n    <svg\n      xmlns=\"http://www.w3.org/2000/svg\"\n      fill=\"none\"\n      viewBox=\"0 0 24 24\"\n      strokeWidth=\"1.5\"\n      stroke=\"currentColor\"\n      className={cx('w-6 h-6', className)}\n    >\n      <path\n        strokeLinecap=\"round\"\n        strokeLinejoin=\"round\"\n        d=\"M6 18L18 6M6 6l12 12\"\n      />\n    </svg>\n  );\n};\n\nexport const CheckedIcon: React.FC<IconProps> = ({\n  className,\n  iconClassName,\n}) => {\n  return (\n    <svg\n      width=\"14\"\n      height=\"15\"\n      viewBox=\"0 0 14 15\"\n      className={className}\n      xmlns=\"http://www.w3.org/2000/svg\"\n    >\n      <path\n        d=\"M3.5 7.7065L6 10.207L10.5 5.7075L9.7925 5L6 8.793L4.2065 7L3.5 7.7065Z\"\n        fill=\"#1E8E3E\"\n      />\n      <path\n        d=\"M3.11101 1.67971C4.26216 0.910543 5.61553 0.5 7 0.5C8.85652 0.5 10.637 1.2375 11.9497 2.55025C13.2625 3.86301 14 5.64348 14 7.5C14 8.88447 13.5895 10.2378 12.8203 11.389C12.0511 12.5401 10.9579 13.4373 9.67879 13.9672C8.3997 14.497 6.99224 14.6356 5.63437 14.3655C4.2765 14.0954 3.02922 13.4287 2.05026 12.4497C1.07129 11.4708 0.404603 10.2235 0.134506 8.86563C-0.13559 7.50776 0.00303298 6.1003 0.532846 4.82122C1.06266 3.54213 1.95987 2.44888 3.11101 1.67971ZM3.66658 12.4888C4.65328 13.1481 5.81332 13.5 7 13.5C8.5913 13.5 10.1174 12.8679 11.2426 11.7426C12.3679 10.6174 13 9.0913 13 7.5C13 6.31331 12.6481 5.15327 11.9888 4.16658C11.3295 3.17988 10.3925 2.41085 9.2961 1.95672C8.19975 1.5026 6.99335 1.38378 5.82946 1.61529C4.66558 1.8468 3.59648 2.41824 2.75736 3.25736C1.91825 4.09647 1.3468 5.16557 1.11529 6.32946C0.88378 7.49334 1.0026 8.69974 1.45673 9.7961C1.91085 10.8925 2.67989 11.8295 3.66658 12.4888Z\"\n        className={cx('fill-#1E8E3E', iconClassName)}\n      />\n    </svg>\n  );\n};\n\nexport const FailedIcon: React.FC<IconProps> = ({\n  className,\n  iconClassName,\n}) => {\n  return (\n    <svg\n      width=\"14\"\n      height=\"14\"\n      viewBox=\"0 0 14 14\"\n      className={className}\n      xmlns=\"http://www.w3.org/2000/svg\"\n    >\n      <path\n        d=\"M14 7C14 3.13401 10.866 1.18292e-06 7 0C3.13401 -2.14186e-06 1.18292e-06 3.134 0 7C-2.14186e-06 10.866 3.134 14 7 14C10.866 14 14 10.866 14 7ZM4.67091 3.94754L7.00001 6.29075L9.32912 3.94754L10.0384 4.65251L7.70499 7L10.0383 9.34749L9.32911 10.0525L7.00001 7.70925L4.67092 10.0525L3.96168 9.34749L6.29503 7L3.96167 4.65251L4.67091 3.94754Z\"\n        fill=\"#D93026\"\n      />\n    </svg>\n  );\n};\n\nexport const CommentEllipseIcon: React.FC<IconProps> = ({\n  className,\n  iconClassName,\n  ...props\n}) => {\n  return (\n    <svg\n      width=\"28\"\n      height=\"28\"\n      viewBox=\"0 0 28 28\"\n      className={className}\n      xmlns=\"http://www.w3.org/2000/svg\"\n      {...props}\n    >\n      <circle\n        cx=\"14\"\n        cy=\"14\"\n        r=\"12\"\n        strokeWidth=\"4\"\n        className={cx('stroke-#FFA14A fill-white', iconClassName)}\n      />\n    </svg>\n  );\n};\n\nexport const CommentEllipseFocusIcon: React.FC<Icon",
+    "extractionMethod": "manual",
+    "directory": "src/components/Icons",
+    "componentType": "class",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Input/index.tsx::Input",
+    "name": "Input",
+    "file": "Custom-ui/src/components/Input/index.tsx",
+    "props": {
+      "error": {
+        "name": "error",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "Error message or error state",
+        "defaultValue": null
+      },
+      "wrapperClassName": {
+        "name": "wrapperClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for wrapperClassName",
+        "defaultValue": null
+      },
+      "outerPlaceholder": {
+        "name": "outerPlaceholder",
+        "type": {
+          "name": "ReactElement<any>"
+        },
+        "required": false,
+        "description": "React element for outerPlaceholder",
+        "defaultValue": null
+      },
+      "prefixIcon": {
+        "name": "prefixIcon",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for prefixIcon",
+        "defaultValue": null
+      },
+      "size": {
+        "name": "size",
+        "type": {
+          "name": "\"normal\" | \"small\" | \"medium\""
+        },
+        "required": false,
+        "description": "Size variant (small, medium, large)",
+        "defaultValue": null
+      },
+      "clearIcon": {
+        "name": "clearIcon",
+        "type": {
+          "name": "\"close\" | \"garbage\""
+        },
+        "required": false,
+        "description": "Union type value for clearIcon",
+        "defaultValue": null
+      }
+    },
+    "description": "A Input layout component with ref forwarding capabilities.",
+    "raw": "\"use client\";\nimport {\n  useRef,\n  forwardRef,\n  useCallback,\n  type ReactElement,\n  type ComponentProps,\n} from \"react\";\nimport composeRef from \"@/utils/composeRef\";\nimport cx from \"clsx\";\nimport \"./index.css\";\ntype OverWrite<T, U> = Omit<T, keyof U> & U;\n\nconst setValue = Object.getOwnPropertyDescriptor(\n  window.HTMLInputElement.prototype,\n  \"value\"\n)!?.set!;\n\nexport type Props = OverWrite<\n  ComponentProps<\"input\">,\n  {\n    error?: string;\n    wrapperClassName?: string;\n    outerPlaceholder?: ReactElement<any>;\n    prefixIcon?: string;\n    size?: \"normal\" | \"small\" | \"medium\";\n    clearIcon?: \"close\" | \"garbage\";\n  }\n>;\n\nconst Input = forwardRef<HTMLInputElement, Props>(\n  (\n    {\n      wrapperClassName,\n      className,\n      error,\n      prefixIcon,\n      id,\n      size = \"normal\",\n      disabled,\n      defaultValue,\n      clearIcon = \"close\",\n      ...props\n    },\n    ref\n  ) => {\n    const domRef = useRef<HTMLInputElement>(null!);\n    const handleClickClear = useCallback(() => {\n      if (!domRef.current || disabled) return;\n      setValue.call(domRef.current, String(\"\"));\n      domRef.current.dispatchEvent(new Event(\"input\", { bubbles: true }));\n      domRef.current.focus();\n    }, [disabled]);\n    const preventBlur = useCallback<React.MouseEventHandler<HTMLInputElement>>(\n      (evt) => evt.preventDefault(),\n      []\n    );\n\n    return (\n      <div\n        className={cx(\n          \"input-wrapper border-1px border-solid border-black\",\n          `input--${size}`,\n          wrapperClassName\n        )}\n      >\n        {prefixIcon && (\n          <span\n            className={cx(\n              prefixIcon,\n              \"prefix-icon absolute left-0 top-[50%] -translate-y-[calc(50%+1px)] w-1.5em h-1.5em text-inner\"\n            )}\n          />\n        )}\n        <input\n          id={id}\n          ref={composeRef(ref, domRef)}\n          className={cx(\"input\", className)}\n          autoComplete=\"off\"\n          disabled={disabled}\n          {...props}\n        />\n        {!!error && (\n          <span id={id ? `${id}-error` : undefined} className=\"input-error\">\n            {error}\n          </span>\n        )}\n\n        <span\n          className={cx(\n            \"clear-icon display-none absolute top-1/2 -translate-y-1/2 justify-center items-center\",\n            clearIcon === \"close\"\n              ? \"right-.5em w-fit h-fit\"\n              : \"right-1px w-1.3em h-1.3em rounded-full bg-purple-normal\"\n          )}\n        >\n          <span\n            className={cx(\n              \"text-grey-normal-hover\",\n              disabled ? \"cursor-default\" : \"cursor-pointer\",\n              {\n                \"i-carbon:close-filled text-1em\": clearIcon === \"close\",\n                \"i-ri:delete-bin-5-fill text-.85em\": clearIcon === \"garbage\",\n              }\n            )}\n            onClick={handleClickClear}\n            onMouseDown={preventBlur}\n          />\n        </span>\n      </div>\n    );\n  }\n);\n\nexport default Input;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Input",
+    "componentType": "forwardRef",
+    "features": [
+      "ref-forwarding"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/app/page.tsx::Page",
+    "name": "Page",
+    "file": "Custom-ui/src/app/page.tsx",
+    "props": {},
+    "description": "A Page page component.",
+    "raw": "export default function Home() {\n  return (\n    <main>\n      <div className=\"text-48px\">Custom UI</div>\n      <p>docs is developing</p>\n    </main>\n  );\n}\n",
+    "extractionMethod": "manual",
+    "directory": "src/app",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/app/tooltip/page.tsx::Page",
+    "name": "Page",
+    "file": "Custom-ui/src/app/tooltip/page.tsx",
+    "props": {},
+    "description": "A Page page component.",
+    "raw": "\"use client\";\nimport PopoverContent from \"@/components/Popover\";\n\nconst TooltipPage: React.FC = () => {\n  return (\n    <div className=\"flex items-center justify-center gap-x-16px h-100vh\">\n       <PopoverContent\n        Content={\n          <div className=\"p-8px flex items-center h-32px border-1px border-solid border-#000000 rounded-32px bg-purple-500\">\n            Left suctomized Popover \n          </div>\n        }\n        trigger=\"hover\"\n        options={{\n          placement: \"left\",\n        }}\n        hasArrow={true}\n        offsetOptions={20}\n        transitionStylesProps={{\n          duration: {\n            open: 1000,\n            close: 2000,\n          },\n        }}\n        // arrowProps={{\n        //   d: \"M0.845227 7.34442L0.155797 6.65499L2.81108 3.99971L0.155797 1.34442L0.845227 0.654992L4.18994 3.99971L0.845227 7.34442Z\",\n        //   fill: \"#70856E\",\n        // }}\n      >\n        <button> Popover</button>\n      </PopoverContent>\n      <PopoverContent\n        Content={\n          <div className=\"p-8px border-1px border-solid border-#000000\">\n            Top Popover with arrow\n          </div>\n        }\n        trigger=\"click\"\n        options={{\n          placement: \"top\",\n        }}\n        hasArrow={true}\n        offsetOptions={20}\n        transitionStylesProps={{\n          duration: {\n            open: 1000,\n            close: 2000,\n          },\n        }}\n        // arrowProps={{\n        //   d: \"M0.845227 7.34442L0.155797 6.65499L2.81108 3.99971L0.155797 1.34442L0.845227 0.654992L4.18994 3.99971L0.845227 7.34442Z\",\n        //   fill: \"#70856E\",\n        // }}\n      >\n        <button> Popover</button>\n      </PopoverContent>\n      <PopoverContent\n        Content={\n          <div className=\"p-8px border-1px border-solid border-#000000\">\n            Bottom Popover without arrow\n          </div>\n        }\n        trigger=\"click\"\n        options={{\n          placement: \"bottom\",\n        }}\n        hasArrow={false}\n        offsetOptions={20}\n        transitionStylesProps={{\n          duration: {\n            open: 1000,\n            close: 2000,\n          },\n        }}\n        // arrowProps={{\n        //   d: \"M0.845227 7.34442L0.155797 6.65499L2.81108 3.99971L0.155797 1.34442L0.845227 0.654992L4.18994 3.99971L0.845227 7.34442Z\",\n        //   fill: \"#70856E\",\n        // }}\n      >\n        <button> Popover</button>\n      </PopoverContent>\n      <PopoverContent\n        Content={\n          <div className=\"p-8px border-1px border-solid border-#000000\">\n            Right Popover with custom arrow\n          </div>\n        }\n        trigger=\"click\"\n        options={{\n          placement: \"right\",\n        }}\n        hasArrow={true}\n        offsetOptions={20}\n        transitionStylesProps={{\n          duration: {\n            open: 1000,\n            close: 2000,\n          },\n        }}\n        arrowProps={{\n          d: \"M13.3124 7.5703L11.0022 2.88933L8.69199 7.5703L3.52624 8.32092L7.26421 11.9645L6.38179 17.1094L11.0022 14.6803L15.6226 17.1094L14.7402 11.9645L18.4781 8.32092L13.3124 7.5703ZM20.7992 7.14245C21.1683 7.19608 21.3157 7.64967 21.0486 7.91001L16.3519 12.4882L17.4606 18.9528C17.5237 19.3204 17.1378 19.6007 16.8077 19.4271L11.0022 16.375L5.19666 19.4271C4.86653 19.6007 4.48068 19.3204 4.54373 18.9528L5.65249 12.4882L0.955723 7.91001C0.68864 7.64967 0.836019 7.19608 1.20512 7.14245L7.69589 6.19929L10.5986 0.317648C10.7637 -0.0168128 11.2406 -0.0168115 11.4057 0.317649L14.3085 6.19929L20.7992 7.14245Z\",\n          fill: \"#70856E\",\n        }}\n      >\n        <button> Popover</button>\n      </PopoverContent>\n    </div>\n  );\n};\n\nexport default TooltipPage;\n",
+    "extractionMethod": "manual",
+    "directory": "src/app/tooltip",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/app/tab/page.tsx::Page",
+    "name": "Page",
+    "file": "Custom-ui/src/app/tab/page.tsx",
+    "props": {},
+    "description": "A Page page component.",
+    "raw": "'use client';\nimport BasicTabs from '@/components/Tabs/BasicTabs';\nimport Tabs from '@/components/Tabs';\n\nconst items = [\n  {\n    id: 1,\n    title: 'Tab 1',\n    content: <div>Tab 1 Content</div>,\n  },\n  {\n    id: 2,\n    title: 'Tab 2',\n    content: <div>Tab 2 Content</div>,\n  },\n  {\n    id: 3,\n    title: 'Tab 3',\n    content: <div>Tab 3 Content</div>,\n  },\n];\n\nconst cardItems = [\n  {\n    id: 1,\n    title: 'Tab 1',\n    children: <div>Tab 1 Content</div>,\n  },\n  {\n    id: 2,\n    title: 'Tab 2',\n    children: <div>Tab 2 Content</div>,\n  },\n  {\n    id: 3,\n    title: 'Tab 3',\n    children: <div>Tab 3 Content</div>,\n  },\n];\n\nconst TabsPage: React.FC = () => \n  (\n    <div className=\"flex flex-col items-center justify-center gap-y-40px min-h-100vh\">\n      <div className=\"flex flex-col gap-y-[24px]\">\n        <div className=\"text-[20px] font-medium\">Default style</div>\n        {/* <div className=\"flex flex-col gap-y-24px bg-[#ffffff] rounded-16px border border-[rgba(235,237,240,1)] border-dashed\"> */}\n        <BasicTabs\n          items={items}\n          defaultActiveId={1}\n          bodyClassName=\"min-w-[300px] h-[128px]\"\n        />\n        {/* </div> */}\n      </div>\n      <div className=\"flex flex-col gap-y-[24px]\">\n        <div className=\"text-[20px] font-medium\">Customized style</div>\n        {/* <div className=\"flex flex-col gap-y-24px bg-#ffffff rounded-16px border border-[rgba(235,237,240,1)] border-dashed\"> */}\n        <Tabs\n          items={cardItems}\n          defaultActiveId={1}\n          type=\"card\"\n          bodyClassName=\"py-[25px] px-[23px] min-w-[300px] h-[128px] bg-[#bcb4c8] rounded-tr-[15px] rounded-b-[15px] box-border\"\n        />\n        {/* </div> */}\n      </div>\n    </div>\n  )\nexport default TabsPage;\n",
+    "extractionMethod": "manual",
+    "directory": "src/app/tab",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/app/select/page.tsx::Page",
+    "name": "Page",
+    "file": "Custom-ui/src/app/select/page.tsx",
+    "props": {},
+    "description": "A Page page component.",
+    "raw": "'use client';\nimport { useCallback } from 'react';\nimport Select from '@/components/Select';\nimport { useForm } from 'react-hook-form';\n\nconst DummyOptions = [\n  { label: 'Option 1', value: 'option1' },\n  { label: 'Option 2', value: 'option2' },\n  { label: 'Option 3', value: 'option3' },\n];\n\ninterface FakeSelectForm {\n  selectData: string[];\n  multipleSelect: string[];\n}\nconst SelectPage: React.FC = () => {\n  const { register, handleSubmit: withSubmit, formState: { errors } } = useForm<FakeSelectForm>();\n\n  const handleSubmit = useCallback((data: FakeSelectForm) => {\n    console.log(data);\n  }, []);\n\n  // const handleOnChange = useCallback((e: any) => {\n  //   console.log(e.target.value);\n  // }, []);\n\n  return (\n    <div>\n      <form onSubmit={withSubmit(handleSubmit)}>\n        <Select\n          options={DummyOptions}\n          //react-hook-form\n          {...register('selectData', { required: true })}\n        //general use\n        // onChange={handleOnChange}\n        />\n        <Select\n          options={DummyOptions}\n          mode='multiple'\n          //react-hook-form\n          {...register('multipleSelect', { required: true })}\n        //general use\n        // onChange={handleOnChange}\n        />\n        <input type=\"submit\" value=\"submit\" />\n      </form>\n    </div>\n  );\n};\n\nexport default SelectPage;\n",
+    "extractionMethod": "manual",
+    "directory": "src/app/select",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/app/popup/page.tsx::Page",
+    "name": "Page",
+    "file": "Custom-ui/src/app/popup/page.tsx",
+    "props": {},
+    "description": "A Page page component.",
+    "raw": "\"use client\";\nimport { useCallback } from \"react\";\nimport { showToast } from \"@/components/Toast\";\nimport { showModal, hideModal } from \"@/components/Modal\";\n\nconst SampleModal: React.FC = () => {\n  return <div className=\"h-300px w-300px\">This is a Modal</div>;\n};\nconst ToastPage: React.FC = () => {\n  const handleShowToast = useCallback(() => {\n    showToast({\n      type: \"success\",\n      content: \"This is a toast\",\n      className: \"border-1px border-#1E8E3E border-solid\",\n    });\n  }, []);\n\n  const handleShowModal = useCallback(() => {\n    showModal({ title:'',content: <SampleModal /> });\n  }, []);\n\n  return (\n    <div className=\"w-full flex flex-col items-center gap-y-24px\">\n      <div className=\"w-4/5\">\n        <button onClick={handleShowToast}>Show Toast</button>\n      </div>\n      <div className=\"w-4/5\">\n        <button onClick={handleShowModal}>Show Modal</button>\n      </div>\n    </div>\n  );\n};\nexport default ToastPage;\n",
+    "extractionMethod": "manual",
+    "directory": "src/app/popup",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/app/modal/page.tsx::Page",
+    "name": "Page",
+    "file": "Custom-ui/src/app/modal/page.tsx",
+    "props": {},
+    "description": "A Page page component.",
+    "raw": "'use client';\nimport { showModal } from '@/components/Modal';\n\nconst ModalPage: React.FC = () => {\n  return (\n    <div className=\"flex flex-col items-center justify-center gap-y-40px min-h-100vh\">\n      <button\n        className=\"px-4 py-2 text-white bg-blue-500 rounded-md\"\n        onClick={() => {\n          showModal({\n            title: 'Modal Title',\n            content: <div>Modal Content</div>,\n          });\n        }}\n      >\n        Show Modal\n      </button>\n    </div>\n  );\n};\n\nexport default ModalPage;\n",
+    "extractionMethod": "manual",
+    "directory": "src/app/modal",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/app/mask/page.tsx::Page",
+    "name": "Page",
+    "file": "Custom-ui/src/app/mask/page.tsx",
+    "props": {},
+    "description": "A Page page component with stateful capabilities.",
+    "raw": "\"use client\";\nimport { useState } from \"react\";\nimport Mask from \"@/components/Mask\";\n\nconst MaskPage: React.FC = () => {\n  const [open, setOpen] = useState(false);\n\n  return (\n    <div className=\"flex flex-row items-center justify-center w-screen h-screen bg-#fffffff\">\n      <button onClick={() => setOpen((pre) => !pre)}>toggle Open</button>\n      <h1 className=\"text-black\">Mask</h1>\n      <Mask open={open} />\n    </div>\n  );\n};\n\nexport default MaskPage;\n",
+    "extractionMethod": "manual",
+    "directory": "src/app/mask",
+    "componentType": "functional",
+    "features": [
+      "stateful"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/app/button/page.tsx::Page",
+    "name": "Page",
+    "file": "Custom-ui/src/app/button/page.tsx",
+    "props": {},
+    "description": "A Page page component.",
+    "raw": "import Button from '@/components/Button';\nimport { StarIcon } from '@/components/Icons';\n\nconst ButtonPage: React.FC = () => {\n  return (\n    <main className=\"w-screen h-screen flex flex-col items-center gap-24px\">\n      <div className=\"flex flex-row gap-x-16px\">\n        <Button variant=\"contained\">contained</Button>\n        <Button variant=\"text\">text</Button>\n        <Button variant=\"outlined\">outlined</Button>\n      </div>\n      <div className=\"flex flex-row gap-x-16px\">\n        <Button color=\"primary\">primary</Button>\n        <Button color=\"green\">green</Button>\n        <Button color=\"white\">white</Button>\n      </div>\n      <div className=\"flex flex-row gap-x-16px\">\n        <Button size=\"mini\">mini</Button>\n        <Button size=\"small\">small</Button>\n        <Button size=\"medium\">medium</Button>\n        <Button size=\"large\">large</Button>\n      </div>\n      <div className=\"w-2/5\">\n        <Button fullWidth>fullWidth</Button>\n      </div>\n      <div>\n        <Button color=\"white\" loading={true}>\n          loading\n        </Button>\n      </div>\n      <div className=\"flex flex-row gap-x-16px\">\n        <Button startIcon={<StarIcon />}>startIcon</Button>\n        <Button endIcon={<StarIcon />}>endIcon</Button>\n      </div>\n    </main>\n  );\n};\n\nexport default ButtonPage;\n",
+    "extractionMethod": "manual",
+    "directory": "src/app/button",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Pagination/index.tsx::Pagination",
+    "name": "Pagination",
+    "file": "Custom-ui/src/components/Pagination/index.tsx",
+    "props": {
+      "currentPage": {
+        "name": "currentPage",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Numeric value for currentPage",
+        "defaultValue": null
+      },
+      "totalPages": {
+        "name": "totalPages",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Numeric value for totalPages",
+        "defaultValue": null
+      },
+      "onPageChange": {
+        "name": "onPageChange",
+        "type": {
+          "name": "(page: number) => void"
+        },
+        "required": true,
+        "description": "Event handler for pagechange",
+        "defaultValue": null
+      }
+    },
+    "description": "A Pagination page component.",
+    "raw": "import { ComponentProps, PropsWithChildren } from \"react\";\nimport cx from \"clsx\";\n\ninterface PaginationProps extends ComponentProps<\"div\"> {\n  currentPage: number;\n  totalPages: number;\n  onPageChange: (page: number) => void;\n}\n\nconst Pagination: React.FC<PaginationProps> = ({\n  currentPage,\n  totalPages,\n  onPageChange,\n  className,\n  ...props\n}) => {\n  const renderPageNumbers = () => {\n    const adjacentPageCount = 2;\n    const pageNumbers = Array.from(\n      { length: totalPages },\n      (_, index) => index + 1\n    );\n\n    const visiblePages = pageNumbers.filter(\n      (page) =>\n        page === 1 ||\n        page === totalPages ||\n        (page >= currentPage - adjacentPageCount &&\n          page <= currentPage + adjacentPageCount)\n    );\n\n    const pagesWithEllipses: (number | null)[] = [];\n    let lastPage = 0;\n\n    visiblePages.forEach((page) => {\n      if (lastPage !== 0 && page - lastPage > 1) {\n        // If there is a gap between pages, insert an ellipse\n        pagesWithEllipses.push(null);\n      }\n      pagesWithEllipses.push(page);\n      lastPage = page;\n    });\n\n    return pagesWithEllipses.map((page) =>\n      page !== null ? (\n        <PaginationContainer>\n          <button key={page} onClick={() => onPageChange(page)}>\n            {page}\n          </button>\n        </PaginationContainer>\n      ) : (\n        <span key=\"ellipsis\">...</span>\n      )\n    );\n  };\n\n  return (\n    <div\n      className={cx(\"flex flex-row items-center justify-center\", className)}\n      {...props}\n    >\n      <button\n        onClick={() => onPageChange(currentPage - 1)}\n        disabled={currentPage === 1}\n      >\n        Previous\n      </button>\n      {renderPageNumbers()}\n      <button\n        onClick={() => onPageChange(currentPage + 1)}\n        disabled={currentPage === totalPages}\n      >\n        Next\n      </button>\n    </div>\n  );\n};\n\nexport default Pagination;\n\nconst PaginationContainer: React.FC<PropsWithChildren> = ({ children }) => {\n  return (\n    <div className=\"w-[30px] h-[30px] border border-solid hover:border-[#ffffff]\">\n      {children}\n    </div>\n  );\n};\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Pagination",
+    "componentType": "class",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/PinForm/index.tsx::PinForm",
+    "name": "PinForm",
+    "file": "Custom-ui/src/components/PinForm/index.tsx",
+    "props": {},
+    "description": "A input component.",
+    "raw": "import { useRef, useCallback } from 'react'\nimport { useForm } from 'react-hook-form'\nimport Input from '../Input'\nimport Button from '../Button'\n\nexport interface PinFormData {\n   pin1: string\n   pin2: string\n   pin3: string\n   pin4: string\n   pin5: string\n   pin6: string\n}\n\nexport const useSubmitPin = () => {\n\n   const submitPin = async (pin: PinFormData) => {\n      //TODO:Test\n      const fakedPromise = new Promise((resolve, reject) => {\n         setTimeout(() => {\n            resolve('success');\n         }, 1000);\n      });\n      await fakedPromise;\n   }\n\n   return submitPin\n}\n\nconst SentForm: React.FC = () => {\n   const submitPin = useSubmitPin()\n   const inputs = useRef<HTMLInputElement[]>([])\n\n   const {\n      register,\n      handleSubmit: withSubmit,\n      formState: { errors },\n      setValue,\n   } = useForm<PinFormData>()\n\n   const handleSubmit = useCallback(\n      async (data: PinFormData) => {\n         await submitPin(data)\n      },\n      [submitPin]\n   )\n\n   // const { inTranscation, execTranscation } = useInTransaction(handleSubmit)\n\n   const handleKeyDown = useCallback(\n      (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {\n         if (!/\\d/.test(e.key)) return\n         e.preventDefault()\n         setValue(`pin${index + 1}` as keyof PinFormData, e.key)\n            ; (e.target as any).value = e.key\n         if (index === 5) {\n            withSubmit(handleSubmit)()\n            return\n         }\n         ; (e.target as any).form.elements[index + 1].focus()\n      },\n      []\n   )\n\n   return (\n      <form\n         onSubmit={withSubmit(handleSubmit)}\n         className=\"flex flex-col items-center w-full gap-y-[16px]\"\n      >\n         <div>\n            You would recieve a pin number if the email is registered in our\n            database\n         </div>\n         <div className=\"grid grid-cols-6 gap-x-[8px] w-full max-w-[384px]\">\n            {Array.from({ length: 6 }).map((_, index) => (\n               <Input\n                  {...register(`pin${index + 1}` as keyof PinFormData, {\n                     required: true,\n                     maxLength: 1,\n                     min: 0,\n                     max: 9,\n                  })}\n                  // error={!!errors[`pin${index + 1}` as keyof PinFormData]}\n                  key={index}\n                  autoFocus={index === 0}\n                  ref={(el: HTMLInputElement) => {\n                     inputs.current[index] = el\n                  }}\n                  onKeyDown={(e) => handleKeyDown(e, index)}\n               // disabled={inTranscation}\n               />\n            ))}\n         </div>\n         <Button color=\"white\" type=\"submit\" className=\"w-full\">\n            Submit\n         </Button>\n      </form>\n   )\n}\n\nexport default SentForm",
+    "extractionMethod": "manual",
+    "directory": "src/components/PinForm",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Popover/index.tsx::Popover",
+    "name": "Popover",
+    "file": "Custom-ui/src/components/Popover/index.tsx",
+    "props": {
+      "Content": {
+        "name": "Content",
+        "type": {
+          "name": "React.ReactNode"
+        },
+        "required": true,
+        "description": "React element for Content",
+        "defaultValue": null
+      },
+      "options": {
+        "name": "options",
+        "type": {
+          "name": "Partial<UseFloatingOptions>"
+        },
+        "required": false,
+        "description": "Property: options",
+        "defaultValue": null
+      },
+      "trigger": {
+        "name": "trigger",
+        "type": {
+          "name": "'click' | 'hover' | 'focus'"
+        },
+        "required": false,
+        "description": "Union type value for trigger",
+        "defaultValue": null
+      },
+      "hasArrow": {
+        "name": "hasArrow",
+        "type": {
+          "name": "boolean"
+        },
+        "required": false,
+        "description": "Boolean flag indicating sarrow",
+        "defaultValue": null
+      },
+      "offsetOptions": {
+        "name": "offsetOptions",
+        "type": {
+          "name": "OffsetOptions"
+        },
+        "required": false,
+        "description": "Property: offsetOptions",
+        "defaultValue": null
+      },
+      "transitionStylesProps": {
+        "name": "transitionStylesProps",
+        "type": {
+          "name": "UseTransitionStylesProps"
+        },
+        "required": false,
+        "description": "Property: transitionStylesProps",
+        "defaultValue": null
+      },
+      "arrowProps": {
+        "name": "arrowProps",
+        "type": {
+          "name": "ArrowProps"
+        },
+        "required": false,
+        "description": "Property: arrowProps",
+        "defaultValue": null
+      },
+      "interactionProps": {
+        "name": "interactionProps",
+        "type": {
+          "name": "UseHoverProps | UseClickProps | UseFocusProps"
+        },
+        "required": false,
+        "description": "Union type value for interactionProps",
+        "defaultValue": null
+      },
+      "dismissProps": {
+        "name": "dismissProps",
+        "type": {
+          "name": "UseDismissProps"
+        },
+        "required": false,
+        "description": "Property: dismissProps",
+        "defaultValue": null
+      }
+    },
+    "description": "A tooltip component with stateful capabilities.",
+    "raw": "'use client';\nimport { useRef, useState, PropsWithChildren, SVGAttributes } from 'react';\nimport {\n  useFloating,\n  UseFloatingOptions,\n  autoUpdate,\n  useFocus,\n  useClick,\n  useInteractions,\n  useHover,\n  useDismiss,\n  FloatingArrow,\n  arrow,\n  offset,\n  OffsetOptions,\n  useTransitionStyles,\n  UseTransitionStylesProps,\n} from '@floating-ui/react';\nimport {\n  UseHoverProps,\n  UseClickProps,\n  UseFocusProps,\n  UseDismissProps,\n  FloatingArrowProps,\n} from '@floating-ui/react';\n\ninterface ArrowProps\n  extends Omit<FloatingArrowProps, 'context'>,\n  SVGAttributes<SVGSVGElement> {\n  height?: number;\n  width?: number;\n  strokeWidth?: number;\n}\n\nexport type InteractionProps = UseHoverProps | UseClickProps | UseFocusProps;\n\nexport interface PopoverProps extends PropsWithChildren {\n  Content: React.ReactNode;\n  options?: Partial<UseFloatingOptions>;\n  trigger?: 'click' | 'hover' | 'focus';\n  // TODO:Attention Not so sure what's the initial intention of `controledOpen` prop\n  // controledOpen?: boolean;\n  hasArrow?: boolean;\n  offsetOptions?: OffsetOptions;\n  transitionStylesProps?: UseTransitionStylesProps;\n  arrowProps?: ArrowProps;\n  interactionProps?: UseHoverProps | UseClickProps | UseFocusProps;\n  dismissProps?: UseDismissProps;\n}\n\nconst Popover: React.FC<PopoverProps> = ({\n  Content,\n  options,\n  trigger,\n  // controledOpen = true,\n  hasArrow,\n  arrowProps,\n  offsetOptions,\n  transitionStylesProps,\n  interactionProps,\n  dismissProps,\n  children,\n}) => {\n  const [isOpen, setIsOpen] = useState(false);\n  const arrowRef = useRef(null);\n  const { refs, floatingStyles, context } = useFloating({\n    middleware: [\n      arrow({\n        element: arrowRef,\n      }),\n      offset(offsetOptions),\n    ],\n    whileElementsMounted: autoUpdate,\n    open: isOpen,\n    onOpenChange: setIsOpen,\n    ...options,\n  });\n\n  const triggerOption = () => {\n    switch (trigger) {\n      case 'click':\n        return useClick(context, interactionProps);\n      case 'focus':\n        return useFocus(context, interactionProps);\n      case 'hover':\n        return useHover(context, interactionProps);\n    }\n  };\n\n  const dismiss = useDismiss(context, dismissProps);\n\n  const { getReferenceProps, getFloatingProps } = useInteractions([\n    triggerOption(),\n    dismiss,\n  ]);\n\n  const { isMounted, styles } = useTransitionStyles(context, {\n    ...transitionStylesProps,\n  });\n\n  return (\n    <>\n      <div ref={refs.setReference} {...getReferenceProps()}>\n        {children}\n      </div>\n      {isOpen && isMounted && (\n        <div\n          ref={refs.setFloating}\n          style={{ ...floatingStyles, ...styles }}\n          {...getFloatingProps()}\n        >\n          {hasArrow && (\n            <FloatingArrow ref={arrowRef} context={context} {...arrowProps} />\n          )}\n          <>{Content}</>\n        </div>\n      )}\n    </>\n  );\n};\n\nexport default Popover;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Popover",
+    "componentType": "functional",
+    "features": [
+      "stateful"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Rate/index.tsx::Rate",
+    "name": "Rate",
+    "file": "Custom-ui/src/components/Rate/index.tsx",
+    "props": {},
+    "description": "A Rate layout component with stateful, side effects capabilities.",
+    "raw": "import {\n  ComponentProps,\n  MouseEvent,\n  useCallback,\n  useRef,\n  useEffect,\n  useState,\n  useLayoutEffect,\n} from \"react\";\nimport cx from \"clsx\";\nimport ToolTip from \"@/components/ToolTip\";\n// import { Tooltip } from 'antd';\nimport {\n  CommentEllipseIcon,\n  CommentEllipseFocusIcon,\n} from \"@/components/Icons\";\nimport { periodToPersent, PersentToPeriod } from \"@/utils/rateUtils\";\n\nconst Rate: React.FC<\n  ComponentProps<\"div\"> & {\n    width?: number;\n    disable?: boolean;\n    initialValue?: number;\n  }\n> = ({ width, disable = false, initialValue, ...props }) => {\n  const [origionX, setOrigionX] = useState<{ left: number; right: number }>({\n    left: 0,\n    right: 0,\n  });\n  const [pressing, setPressing] = useState(false);\n  const [x, setX] = useState(width ?? 0 / 2);\n  let containerRef = useRef<HTMLDivElement>(null);\n\n  const handleDisable = useCallback((e: MouseEvent) => {\n    e.preventDefault();\n  }, []);\n\n  const handleMouseMove = useCallback(\n    (e: MouseEvent) => {\n      let leftX = Math.floor(e.clientX - origionX.left);\n      if (\n        pressing &&\n        leftX >= 0 &&\n        periodToPersent(leftX, origionX.right - origionX.left, 120) <= 120\n      ) {\n        setX(leftX);\n      }\n    },\n    [pressing]\n  );\n\n  const handleMouseDone = useCallback((e: MouseEvent) => {\n    setPressing(true);\n  }, []);\n\n  const handleMouseUp = useCallback((e: MouseEvent) => {\n    setPressing(false);\n  }, []);\n\n  const getClientX = useCallback(() => {\n    const element = containerRef.current;\n\n    if (element) {\n      const rect = element.getBoundingClientRect();\n      const leftX = rect.left;\n      const rightX = rect.right;\n      setOrigionX({ left: leftX, right: rightX });\n    }\n  }, [containerRef]);\n\n  useEffect(() => {\n    setTimeout(() => getClientX(), 200);\n  }, [containerRef]);\n\n  const handleResize = useCallback(() => {\n    getClientX();\n    if (containerRef.current) {\n      const testedWidth = containerRef.current.offsetWidth;\n      setX(PersentToPeriod(initialValue!, testedWidth, 120) + 1);\n    }\n  }, [containerRef]);\n\n  useLayoutEffect(() => {\n    if (!initialValue) return;\n    if (width) {\n      setX(PersentToPeriod(initialValue, width, 120));\n      return;\n    }\n    handleResize();\n    window.addEventListener(\"resize\", handleResize);\n    return () => window.removeEventListener(\"resize\", handleResize);\n  }, [containerRef]);\n\n  return (\n    <div\n      {...props}\n      onMouseMove={disable ? handleDisable : handleMouseMove}\n      ref={containerRef}\n      className=\"relative w-full h-8px bg-#DCDEE0 rounded-41px\"\n      onMouseLeave={disable ? handleDisable : handleMouseUp}\n      aria-disabled\n    >\n      <div\n        className={cx(\n          \"h-full rounded-l-41px\",\n          pressing ? \"bg-#F48A28\" : \"bg-#FFA14A\"\n        )}\n        style={{ width: `${x + 1}px` }}\n      />\n      <ToolTip\n        text={`${periodToPersent(x, origionX.right - origionX.left, 120)}`}\n      >\n        <CommentEllipseIcon\n          onMouseDown={disable ? handleDisable : handleMouseDone}\n          onMouseUp={disable ? handleDisable : handleMouseUp}\n          className={cx(\n            \"absolute top-50% -translate-y-50% cursor-pointer z-20\"\n          )}\n          style={{ left: `${x - 14}px` }}\n          iconClassName=\"hover:stroke-#F48A28\"\n        />\n      </ToolTip>\n      {pressing && (\n        <CommentEllipseFocusIcon\n          className={cx(\n            \"absolute top-50% -translate-y-50% cursor-pointer z-10\"\n          )}\n          style={{ left: `${x - 20}px` }}\n        />\n      )}\n    </div>\n  );\n};\n\nexport default Rate;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Rate",
+    "componentType": "functional",
+    "features": [
+      "stateful"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/utils/rateUtils.ts::RateUtils",
+    "name": "RateUtils",
+    "file": "Custom-ui/src/utils/rateUtils.ts",
+    "props": {},
+    "description": "A functional React component.",
+    "raw": "export const periodToPersent = (period: number, width: number, max: number) => {\n  return Math.floor((period / width) * max);\n};\n\nexport const PersentToPeriod = (\n  percent: number,\n  width: number,\n  max: number\n) => {\n  return Math.floor((width / max) * percent);\n};\n",
+    "extractionMethod": "manual",
+    "directory": "src/utils",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/utils/renderReactNode.ts::RenderReactNode",
+    "name": "RenderReactNode",
+    "file": "Custom-ui/src/utils/renderReactNode.ts",
+    "props": {},
+    "description": "A functional React component.",
+    "raw": "import React, { isValidElement, cloneElement } from \"react\";\nimport type { ReactElement, ReactNode } from \"react\";\n\nconst renderReactNode = (\n  ele: ReactNode | Function,\n  props?: Record<string, any>\n) => {\n  let node: React.ReactElement<any>;\n  if (typeof ele === \"function\") {\n    node = ele();\n  } else if (\n    typeof ele === \"object\" &&\n    typeof (ele as any)?.render === \"function\"\n  ) {\n    node = (ele as any).render();\n  } else {\n    if (!props) {\n      node = ele as ReactElement<any>;\n    } else {\n      node = cloneElement(ele as ReactElement<any>, props);\n    }\n  }\n\n  if (!isValidElement(node)) {\n    return null;\n  }\n\n  return node;\n};\n\nexport default renderReactNode;\n",
+    "extractionMethod": "manual",
+    "directory": "src/utils",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Select/index.tsx::Select",
+    "name": "Select",
+    "file": "Custom-ui/src/components/Select/index.tsx",
+    "props": {},
+    "description": "e.preventDefault();",
+    "raw": "'use client';\nimport { useState, ComponentProps, useCallback, forwardRef } from 'react';\nimport cx from 'clsx';\nimport {\n  useFloating,\n  autoUpdate,\n  useClick,\n  useInteractions,\n  useDismiss,\n  offset,\n  type Placement,\n} from '@floating-ui/react';\n\ninterface Option {\n  label: string;\n  value: string | number;\n}\n\ntype SelectProps = OverWrite<\n  ComponentProps<'select'>,\n  {\n    placeholder?: string;\n    placement?: Placement;\n    options: Option[];\n    defaultValue?: Option[];\n    mode?: 'single' | 'multiple';\n    optionClassName?: string;\n  }\n>;\n\nconst Select: React.FC<SelectProps> =\n  (\n    {\n      options,\n      className,\n      optionClassName,\n      defaultValue,\n      placeholder = 'Select',\n      placement = 'bottom',\n      mode = 'single',\n      onChange,\n      name,\n      ref,\n      ...props\n    }\n  ) => {\n    const [selectedOptions, setSelectedOptions] = useState<Option[] | undefined>(\n      defaultValue\n    );\n    const [isOpen, setIsOpen] = useState(false);\n    // const [isHover, setIsHover] = useState(false);\n\n    const { refs, floatingStyles, context } = useFloating({\n      middleware: [offset(4)],\n      placement: placement,\n      whileElementsMounted: autoUpdate,\n      open: isOpen,\n      onOpenChange: setIsOpen,\n    });\n\n    const click = useClick(context, { event: 'mousedown' });\n    const dismiss = useDismiss(context, { outsidePressEvent: 'mousedown' });\n\n    // const handleMouseEnter = useCallback(() => {\n    //   setIsHover(true);\n    // }, []);\n\n    // const handleMouseLeave = useCallback(() => {\n    //   setIsHover(false);\n    // }, []);\n\n    const { getReferenceProps, getFloatingProps } = useInteractions([\n      click,\n      dismiss,\n    ]);\n\n    const handleSelect = useCallback(\n      (option: Option) => {\n        let newVal;\n        if (selectedOptions?.some((ele) => ele.value === option.value)) {\n          newVal = selectedOptions?.filter(\n            (ele) => ele.value !== option.value\n          )\n        } else {\n          newVal = mode === 'single' ? [option] : [...(selectedOptions || []), option];\n        }\n        setSelectedOptions(newVal);\n        setIsOpen(false);\n        onChange?.({ target: { value: newVal, name } } as any);\n      },\n      [onChange, selectedOptions]\n    );\n\n    // const handleClear = useCallback((e: MouseEvent) => {\n    //   e.preventDefault();\n    //   setSelectedOption(undefined);\n    // }, []);\n\n    return (\n      <div className=\"relative\" suppressHydrationWarning>\n        <div\n          ref={refs.setReference}\n          {...getReferenceProps()}\n          className={cx(\n            'pl-[12px] pr-[7px] flex items-center justify-between w-[240px] h-[32px] text-[14px] leading-[22px] rounded-[8px] border-[#DCDEE0] border-[1px] border-solid focus:border-[#FFA14A] hover:border-[#FFA14A] cursor-pointer',\n            isOpen && 'border-[#FFA14A]',\n            className\n          )}\n        // onMouseEnter={handleMouseEnter}\n        // onMouseLeave={handleMouseLeave}\n        >\n          {selectedOptions ? (\n            <span className=\"text-[#323233]\">{selectedOptions.map((opts) => opts.label).join(', ')}</span>\n          ) : (\n            <span className=\"text-[#C1C2C5]\">{placeholder}</span>\n          )}\n          {/* <div className=\"flex items-center justify-center w-18px h-18px\"> */}\n          {/* TODO: clear selected */}\n          {/* {!isOpen && isHover && selectedOption && (\n            <div\n              className=\"i-ic:sharp-cancel text-#595A5B cursor-pointer z-200\"\n              onClick={(e) => {\n                handleClear(e);\n              }}\n            />\n          )} */}\n          {/* {!isOpen && (!isHover || !selectedOption) && (\n            <span className=\"i-octicon:triangle-down-16 text-#595A5B\" />\n          )}\n          {isOpen && <span className=\"i-octicon:triangle-up-16 text-[#595A5B]\" />} */}\n          {/* </div> */}\n        </div>\n        {isOpen && (\n          <div\n            className=\"w-[240px] rounded-[2px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.12)] ",
+    "extractionMethod": "manual",
+    "directory": "src/components/Select",
+    "componentType": "forwardRef",
+    "features": [
+      "ref-forwarding",
+      "stateful"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Modal/index.tsx::showModal",
+    "name": "showModal",
+    "file": "Custom-ui/src/components/Modal/index.tsx",
+    "props": {
+      "title": {
+        "defaultValue": null,
+        "description": "",
+        "name": "title",
+        "parent": {
+          "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+          "name": "Modal"
+        },
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+            "name": "Modal"
+          }
+        ],
+        "required": false,
+        "type": {
+          "name": "enum",
+          "raw": "string",
+          "value": [
+            {
+              "value": "string"
+            }
+          ]
+        },
+        "tags": {}
+      },
+      "headClass": {
+        "defaultValue": null,
+        "description": "",
+        "name": "headClass",
+        "parent": {
+          "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+          "name": "Modal"
+        },
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+            "name": "Modal"
+          }
+        ],
+        "required": false,
+        "type": {
+          "name": "enum",
+          "raw": "string",
+          "value": [
+            {
+              "value": "string"
+            }
+          ]
+        },
+        "tags": {}
+      },
+      "content": {
+        "defaultValue": null,
+        "description": "",
+        "name": "content",
+        "parent": {
+          "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+          "name": "Modal"
+        },
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+            "name": "Modal"
+          }
+        ],
+        "required": true,
+        "type": {
+          "name": "ReactNode"
+        },
+        "tags": {}
+      },
+      "className": {
+        "defaultValue": null,
+        "description": "",
+        "name": "className",
+        "parent": {
+          "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+          "name": "Modal"
+        },
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+            "name": "Modal"
+          }
+        ],
+        "required": false,
+        "type": {
+          "name": "enum",
+          "raw": "string",
+          "value": [
+            {
+              "value": "string"
+            }
+          ]
+        },
+        "tags": {}
+      },
+      "iconClass": {
+        "defaultValue": null,
+        "description": "",
+        "name": "iconClass",
+        "parent": {
+          "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+          "name": "Modal"
+        },
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Modal/index.tsx",
+            "name": "Modal"
+          }
+        ],
+        "required": false,
+        "type": {
+          "name": "enum",
+          "raw": "string",
+          "value": [
+            {
+              "value": "string"
+            }
+          ]
+        },
+        "tags": {}
+      }
+    },
+    "description": "A modal component with stateful capabilities.",
+    "raw": "'use client';\nimport React, { type ReactNode, useState, useCallback } from 'react';\nimport {\n  useFloating,\n  useClick,\n  useDismiss,\n  useRole,\n  useInteractions,\n  FloatingOverlay,\n  FloatingFocusManager,\n} from '@floating-ui/react';\nimport cx from 'clsx';\nimport { uniqueId } from 'lodash-es';\nimport { useTransition, animated as anm } from '@react-spring/web';\nimport { create } from 'zustand';\nimport { transitionAnimation, AnimatedDiv } from '@/components/Animation';\nimport { CloseIcon } from '../Icons';\nimport renderReactNode from '@/utils/renderReactNode';\n\ninterface Modal {\n  title?: string;\n  headClass?: string;\n  content: ReactNode;\n  className?: string;\n  iconClass?: string;\n  id: string;\n}\n\ninterface ModalStore {\n  modal: Modal | null;\n  showModal: (newModal: Modal) => void;\n  hideModal: () => void;\n}\n\nconst modalStore = create<ModalStore>((set) => ({\n  modal: null,\n  showModal: (newModal: Modal) => set({ modal: newModal }),\n  hideModal: () => set({ modal: null }),\n}));\n\nexport const showModal = (param: Omit<Modal, 'id'>) => {\n  modalStore.setState({\n    modal: {\n      title: param.title,\n      content: param.content,\n      className: param.className ?? '',\n      headClass: param.headClass ?? '',\n      id: uniqueId(),\n    },\n  });\n};\n\nexport const hideModal = () => {\n  modalStore.setState({ modal: null });\n};\n\nexport const ModalRender: React.FC = () => {\n  const modal = modalStore((state) => state.modal);\n  //modal display animation\n  const transitions = useTransition(modal, {\n    ...transitionAnimation.zoom,\n  });\n\n  const handleDismiss = useCallback(\n    (open: boolean, event?: Event) => {\n      if (!open) {\n        hideModal();\n      }\n    },\n    [hideModal]\n  );\n\n  const { refs, context } = useFloating({\n    open: !!modal,\n    onOpenChange: handleDismiss,\n  });\n\n  const dismiss = useDismiss(context, {\n    outsidePressEvent: 'mousedown',\n  });\n\n  const { getFloatingProps } = useInteractions([dismiss]);\n\n  if (!modal) return <></>;\n  return transitions((style, item) => (\n    <>\n      {item && (\n        (<FloatingOverlay\n          lockScroll\n          style={{ background: 'rgba(0, 0, 0, 0.6)' }}\n          className=\"flex flex-col items-center justify-center\"\n        >\n          <FloatingFocusManager context={context}>\n            <div ref={refs.setFloating} {...getFloatingProps()}>\n              <AnimatedDiv\n                style={{ ...style }}\n                className={cx(\n                  'relative flex flex-col jusity-center rounded-[8px] bg-[#FFFFFF] overflow-hidden dropdown-shadow z-[200]',\n                  item.className\n                )}\n              >\n                <div\n                  className={cx(\n                    'px-[24px] flex justify-between items-center h-[40px] text-[14px] leading-[22px] text-[#111111] font-medium',\n                    item.headClass\n                  )}\n                >\n                  {item.title}\n                  <div\n                    className=\"text-[14px] text-[#606266] cursor-pointer\"\n                    onClick={hideModal}\n                  >\n                    <CloseIcon />\n                  </div>\n                </div>\n                {/* Divider between header and body */}\n                <div className=\"h-[1px] bg-[#EBEDF0] pointer-events-none\" />\n                <div className=\"pt-[24px] px-[24px]\">\n                  {renderReactNode(item.content)}\n                </div>\n              </AnimatedDiv>\n            </div>\n          </FloatingFocusManager>\n        </FloatingOverlay>)\n      )}\n    </>\n  ));\n};\n",
+    "extractionMethod": "automatic",
+    "tags": {},
+    "directory": "src/components/Modal",
+    "componentType": "functional",
+    "features": [
+      "stateful"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Toast/index.tsx::showToast",
+    "name": "showToast",
+    "file": "Custom-ui/src/components/Toast/index.tsx",
+    "props": {
+      "content": {
+        "defaultValue": null,
+        "description": "",
+        "name": "content",
+        "parent": {
+          "fileName": "poc_rag_builder/Custom-ui/src/components/Toast/index.tsx",
+          "name": "Toast"
+        },
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Toast/index.tsx",
+            "name": "Toast"
+          }
+        ],
+        "required": true,
+        "type": {
+          "name": "any"
+        },
+        "tags": {}
+      },
+      "type": {
+        "defaultValue": null,
+        "description": "",
+        "name": "type",
+        "parent": {
+          "fileName": "poc_rag_builder/Custom-ui/src/components/Toast/index.tsx",
+          "name": "Toast"
+        },
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Toast/index.tsx",
+            "name": "Toast"
+          }
+        ],
+        "required": true,
+        "type": {
+          "name": "enum",
+          "raw": "\"success\" | \"warning\" | \"failed\"",
+          "value": [
+            {
+              "value": "\"success\""
+            },
+            {
+              "value": "\"warning\""
+            },
+            {
+              "value": "\"failed\""
+            }
+          ]
+        },
+        "tags": {}
+      },
+      "className": {
+        "defaultValue": null,
+        "description": "",
+        "name": "className",
+        "parent": {
+          "fileName": "poc_rag_builder/Custom-ui/src/components/Toast/index.tsx",
+          "name": "Toast"
+        },
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Toast/index.tsx",
+            "name": "Toast"
+          }
+        ],
+        "required": false,
+        "type": {
+          "name": "enum",
+          "raw": "string",
+          "value": [
+            {
+              "value": "string"
+            }
+          ]
+        },
+        "tags": {}
+      },
+      "key": {
+        "defaultValue": null,
+        "description": "",
+        "name": "key",
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Toast/index.tsx",
+            "name": "TypeLiteral"
+          }
+        ],
+        "required": false,
+        "type": {
+          "name": "enum",
+          "raw": "string",
+          "value": [
+            {
+              "value": "string"
+            }
+          ]
+        },
+        "tags": {}
+      },
+      "duration": {
+        "defaultValue": null,
+        "description": "",
+        "name": "duration",
+        "declarations": [
+          {
+            "fileName": "poc_rag_builder/Custom-ui/src/components/Toast/index.tsx",
+            "name": "TypeLiteral"
+          }
+        ],
+        "required": false,
+        "type": {
+          "name": "enum",
+          "raw": "number",
+          "value": [
+            {
+              "value": "number"
+            }
+          ]
+        },
+        "tags": {}
+      }
+    },
+    "description": "A card component.",
+    "raw": "\"use client\";\nimport React, { useCallback } from \"react\";\nimport { create } from \"zustand\";\nimport cx from \"clsx\";\nimport { uniqueId } from \"lodash-es\";\nimport { CheckedIcon, FailedIcon } from \"@/components/Icons\";\n\ninterface Toast {\n  content: string | React.ReactNode;\n  type: \"success\" | \"warning\" | \"failed\";\n  className?: string;\n  id: string;\n}\n\ninterface ToastStore {\n  toasts: Toast[];\n  setToast: (newToasts: Toast[]) => void;\n}\n\nconst toastsStore = create<ToastStore>((set) => ({\n  toasts: [],\n  setToast: (newToasts) => set({ toasts: newToasts }),\n}));\n\nexport const showToast = (\n  param: Omit<Toast, \"id\"> & { key?: string; duration?: number }\n) => {\n  let cur = toastsStore.getState().toasts;\n  if (\n    param.key &&\n    cur.find(\n      (item: Toast & { key?: string }) => item.key && item.key === param.key\n    )\n  )\n    return;\n  const newArr = cur ? [...cur] : [];\n  const id = uniqueId();\n  newArr.push({ ...param, id });\n  toastsStore.setState({ toasts: [...newArr] });\n  setTimeout(() => {\n    let curAfter = toastsStore.getState().toasts;\n    let newAfter = curAfter ? [...curAfter] : [];\n    newAfter = newAfter.filter((toast) => toast.id !== id);\n    toastsStore.setState({ toasts: [...newAfter] });\n  }, param.duration ?? 3000);\n};\n\nexport const ToastRender: React.FC = () => {\n  const toasts = toastsStore((state) => state.toasts);\n  const hide = useCallback((id: string) => {\n    let cur = toastsStore.getState().toasts;\n    let index = cur.findIndex((e) => e.id === id);\n    if (index === -1) return cur;\n    cur.splice(index, 1);\n    toastsStore.setState({ toasts: [...cur] });\n  }, []);\n\n  return (\n    <div className=\"fixed left-0 top-[5%] right-0 flex flex-col justify-center items-center gap-[12px] z-40\">\n      {toasts.map(({ content, type, id, className }) => (\n        <div\n          key={id}\n          className={cx(\n            \"px-[24px] h-48px flex justify-between items-center gap-x-16px bg-#ffffff rounded-2px z-40 task-card-shadow\",\n            type === \"success\" && \"text-#1E8E3E\",\n            type === \"warning\" || (type === \"failed\" && \"text-#D93026\"),\n            className\n          )}\n        >\n          {type === \"success\" ? <CheckedIcon /> : <FailedIcon />}\n          {content}\n          {/* <div\n            className=\"i-ep:close-bold cursor-pointer\"\n            onClick={(e) => {\n              hide(id);\n            }}\n          ></div> */}\n        </div>\n      ))}\n    </div>\n  );\n};\n",
+    "extractionMethod": "automatic",
+    "tags": {},
+    "directory": "src/components/Toast",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Spin/index.tsx::Spin",
+    "name": "Spin",
+    "file": "Custom-ui/src/components/Spin/index.tsx",
+    "props": {
+      "svg": {
+        "name": "svg",
+        "type": {
+          "name": "ReactNode"
+        },
+        "required": false,
+        "description": "React element for svg",
+        "defaultValue": null
+      },
+      "springConf": {
+        "name": "springConf",
+        "type": {
+          "name": "object"
+        },
+        "required": false,
+        "description": "Property: springConf",
+        "defaultValue": null
+      }
+    },
+    "description": "A Spin page component.",
+    "raw": "\"use client\";\nimport React, { type HTMLAttributes, type ReactNode } from \"react\";\nimport cx from \"clsx\";\nimport { animated, useSpring } from \"@react-spring/web\";\nimport { rotate, AnimatedDiv } from \"@/components/Animation\";\nimport \"./index.css\";\n\ninterface SpinProps extends HTMLAttributes<HTMLDivElement> {\n  svg?: ReactNode;\n  // type?: \"ring\" | \"bounce\" | \"flip\";\n  springConf?: object;\n}\n\nconst Spin: React.FC<SpinProps> = ({\n  className,\n  // type = \"ring\",\n  springConf,\n  svg,\n  ...props\n}) => {\n  const springs = useSpring(springConf ? { ...springConf } : { ...rotate });\n  return (\n    <AnimatedDiv\n      style={{ ...springs }}\n      className={cx(\"relative flex justify-center items-center\", className)}\n      {...props}\n    >\n      {svg ? (\n        <>{svg}</>\n      ) : (\n        <svg viewBox=\"25 25 50 50\">\n          <circle cx=\"50\" cy=\"50\" r=\"20\" fill=\"none\" className=\"path\" />\n        </svg>\n      )}\n    </AnimatedDiv>\n  );\n};\n\nexport default Spin;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Spin",
+    "componentType": "class",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Tabs/TabContent/index.tsx::TabContent",
+    "name": "TabContent",
+    "file": "Custom-ui/src/components/Tabs/TabContent/index.tsx",
+    "props": {
+      "id": {
+        "name": "id",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Unique identifier",
+        "defaultValue": null
+      },
+      "activeId": {
+        "name": "activeId",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Numeric value for activeId",
+        "defaultValue": null
+      }
+    },
+    "description": "A functional React component.",
+    "raw": "import { type PropsWithChildren } from 'react';\n\ninterface TabContentProps extends PropsWithChildren {\n  id: number;\n  activeId: number;\n}\n\nconst TabContent: React.FC<TabContentProps> = ({ id, activeId, children }) => {\n  return activeId === id ? <>{children}</> : null;\n};\n\nexport default TabContent;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Tabs/TabContent",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Tabs/BasicTabs/TabContent/index.tsx::TabContent",
+    "name": "TabContent",
+    "file": "Custom-ui/src/components/Tabs/BasicTabs/TabContent/index.tsx",
+    "props": {
+      "id": {
+        "name": "id",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Unique identifier",
+        "defaultValue": null
+      },
+      "activeId": {
+        "name": "activeId",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Numeric value for activeId",
+        "defaultValue": null
+      },
+      "content": {
+        "name": "content",
+        "type": {
+          "name": "JSX.Element"
+        },
+        "required": true,
+        "description": "React element for content",
+        "defaultValue": null
+      }
+    },
+    "description": "A functional React component.",
+    "raw": "import type { JSX } from \"react\";\ninterface TabContentProps {\n  id: number;\n  activeId: number;\n  content: JSX.Element;\n}\n\nconst TabContent: React.FC<TabContentProps> = ({ id, activeId, content }) => {\n  return activeId === id ? <>{content}</> : null;\n};\n\nexport default TabContent;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Tabs/BasicTabs/TabContent",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Tabs/TabNavItem/index.tsx::TabNavItem",
+    "name": "TabNavItem",
+    "file": "Custom-ui/src/components/Tabs/TabNavItem/index.tsx",
+    "props": {
+      "id": {
+        "name": "id",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Unique identifier",
+        "defaultValue": null
+      },
+      "title": {
+        "name": "title",
+        "type": {
+          "name": "string"
+        },
+        "required": true,
+        "description": "Title text or tooltip",
+        "defaultValue": null
+      },
+      "activeId": {
+        "name": "activeId",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Numeric value for activeId",
+        "defaultValue": null
+      },
+      "navItemClassName": {
+        "name": "navItemClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for navItemClassName",
+        "defaultValue": null
+      },
+      "activeNavItemClassName": {
+        "name": "activeNavItemClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for activeNavItemClassName",
+        "defaultValue": null
+      }
+    },
+    "description": "A card component.",
+    "raw": "import { useCallback } from 'react';\nimport cx from 'clsx';\ninterface TabNavItemProps {\n  id: number;\n  title: string;\n  activeId: number;\n  navItemClassName?: string;\n  activeNavItemClassName?: string;\n  setActiveId: (id: number) => void;\n  type?: 'line' | 'card';\n}\n\nconst TabNavItem: React.FC<TabNavItemProps> = ({\n  id,\n  title,\n  activeId,\n  navItemClassName,\n  activeNavItemClassName,\n  type = 'line',\n  setActiveId,\n}) => {\n  const handleClick = useCallback(() => {\n    setActiveId(id);\n  }, []);\n\n  return (\n    <div\n      className={cx(\n        'text-[14px] leading-[22px]  cursor-pointer box-border',\n        `cui-tab-navitem--${type}`,\n        navItemClassName,\n        id === activeId && activeNavItemClassName,\n        id === activeId && `cui-tab-navitem--${type}-active`\n      )}\n      onClick={handleClick}\n    >\n      {title}\n    </div>\n  );\n};\n\nexport default TabNavItem;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Tabs/TabNavItem",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Tabs/BasicTabs/TabNavItem/index.tsx::TabNavItem",
+    "name": "TabNavItem",
+    "file": "Custom-ui/src/components/Tabs/BasicTabs/TabNavItem/index.tsx",
+    "props": {
+      "id": {
+        "name": "id",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Unique identifier",
+        "defaultValue": null
+      },
+      "title": {
+        "name": "title",
+        "type": {
+          "name": "string"
+        },
+        "required": true,
+        "description": "Title text or tooltip",
+        "defaultValue": null
+      },
+      "activeId": {
+        "name": "activeId",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Numeric value for activeId",
+        "defaultValue": null
+      },
+      "navItemClassName": {
+        "name": "navItemClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for navItemClassName",
+        "defaultValue": null
+      },
+      "activeNavItemClassName": {
+        "name": "activeNavItemClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for activeNavItemClassName",
+        "defaultValue": null
+      },
+      "setActiveId": {
+        "name": "setActiveId",
+        "type": {
+          "name": "(id: number) => void"
+        },
+        "required": true,
+        "description": "Numeric value for setActiveId",
+        "defaultValue": null
+      }
+    },
+    "description": "A functional React component.",
+    "raw": "import { useCallback } from 'react';\nimport cx from 'clsx';\n\ninterface TabNavItemProps {\n  id: number;\n  title: string;\n  activeId: number;\n  navItemClassName?: string;\n  activeNavItemClassName?: string;\n  setActiveId: (id: number) => void;\n}\n\nconst TabNavItem: React.FC<TabNavItemProps> = ({\n  id,\n  title,\n  activeId,\n  navItemClassName,\n  activeNavItemClassName,\n  setActiveId,\n}) => {\n  const handleClick = useCallback(() => {\n    setActiveId(id);\n  }, []);\n\n  return (\n    <div\n      className={cx(\n        'mr-[32px] flex items-center h-full text-[14px] leading-[22px] cursor-pointer box-border text-[#595A5B]',\n        navItemClassName,\n        id === activeId &&\n          '!text-[#FFA14A] border-b border-b-solid border-[#FFA14A]',\n        id === activeId && activeNavItemClassName\n      )}\n      onClick={handleClick}\n    >\n      {title}\n    </div>\n  );\n};\n\nexport default TabNavItem;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Tabs/BasicTabs/TabNavItem",
+    "componentType": "functional",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/Tabs/index.tsx::Tabs",
+    "name": "Tabs",
+    "file": "Custom-ui/src/components/Tabs/index.tsx",
+    "props": {
+      "items": {
+        "name": "items",
+        "type": {
+          "name": "Item[]"
+        },
+        "required": true,
+        "description": "Property: items",
+        "defaultValue": null
+      },
+      "defaultActiveId": {
+        "name": "defaultActiveId",
+        "type": {
+          "name": "number"
+        },
+        "required": true,
+        "description": "Numeric value for defaultActiveId",
+        "defaultValue": null
+      },
+      "wrapperClassName": {
+        "name": "wrapperClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for wrapperClassName",
+        "defaultValue": null
+      },
+      "navClassName": {
+        "name": "navClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for navClassName",
+        "defaultValue": null
+      },
+      "navItemClassName": {
+        "name": "navItemClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for navItemClassName",
+        "defaultValue": null
+      },
+      "activeNavItemClassName": {
+        "name": "activeNavItemClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for activeNavItemClassName",
+        "defaultValue": null
+      },
+      "bodyClassName": {
+        "name": "bodyClassName",
+        "type": {
+          "name": "string"
+        },
+        "required": false,
+        "description": "String value for bodyClassName",
+        "defaultValue": null
+      }
+    },
+    "description": "A Tabs layout component with stateful capabilities.",
+    "raw": "'use client';\nimport React, { useState, useCallback, type JSX } from 'react';\nimport cx from 'clsx';\nimport TabNavItem from './TabNavItem';\nimport TabContent from './TabContent';\nimport './index.css';\n\nexport interface Item {\n  id: number;\n  title: string;\n  children: JSX.Element;\n}\n\ninterface TabsProps {\n  items: Item[];\n  defaultActiveId: number;\n  wrapperClassName?: string;\n  navClassName?: string;\n  navItemClassName?: string;\n  activeNavItemClassName?: string;\n  bodyClassName?: string;\n  onTabChange?: (id: number) => void;\n  type?: 'line' | 'card';\n}\n\nconst Tabs: React.FC<TabsProps> = ({\n  items,\n  defaultActiveId,\n  navClassName,\n  navItemClassName,\n  activeNavItemClassName,\n  bodyClassName,\n  wrapperClassName,\n  type = 'line',\n  onTabChange,\n}) => {\n  const [activeId, setActiveId] = useState(defaultActiveId);\n  const handleTabChange = useCallback((id: number) => {\n    setActiveId(id);\n    onTabChange?.(id);\n  }, []);\n  return (\n    <div\n      className={cx(\n        'pt-[26px] pb-[11px] px-[14px] flex flex-col rounded-[15px] bg-[#ffffff]',\n        wrapperClassName\n      )}\n    >\n      <div\n        className={cx(\n          'flex flex-row h-[36px] overflow-hidden',\n          `cui-tab-navwrapper--${type}`,\n          navClassName\n        )}\n      >\n        {items.map((item) => (\n          <TabNavItem\n            title={item.title}\n            setActiveId={handleTabChange}\n            id={item.id}\n            activeId={activeId}\n            key={`${item.id}-tab`}\n            navItemClassName={navItemClassName}\n            activeNavItemClassName={activeNavItemClassName}\n            type={type}\n          />\n        ))}\n      </div>\n      <div className={cx('w-full', `cui-tab-body--${type}`, bodyClassName)}>\n        {items.map((item) => (\n          <TabContent\n            activeId={activeId}\n            id={item.id}\n            children={item.children}\n            key={`${item.id}-content`}\n          />\n        ))}\n      </div>\n    </div>\n  );\n};\n\nexport default Tabs;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/Tabs",
+    "componentType": "functional",
+    "features": [
+      "stateful"
+    ]
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/components/ToolTip/index.tsx::ToolTip",
+    "name": "ToolTip",
+    "file": "Custom-ui/src/components/ToolTip/index.tsx",
+    "props": {},
+    "description": "A tooltip component.",
+    "raw": "import React from \"react\";\nimport cx from \"clsx\";\nimport Popover, { PopoverProps } from \"@/components/Popover\";\n\ninterface TooltipProps\n  extends OverWrite<\n    Omit<PopoverProps, \"Content\">,\n    { trigger?: \"click\" | \"hover\" | \"focus\" }\n  > {}\n\nconst ToolTip: React.FC<\n  TooltipProps & { text?: string; className?: string }\n> = ({\n  children,\n  text,\n  className,\n  options = {\n    placement: \"top\",\n  },\n  hasArrow = true,\n  // delay = 180,\n  trigger = \"hover\",\n  ...props\n}) => {\n  return (\n    <Popover\n      hasArrow={hasArrow}\n      options={options}\n      Content={\n        <div\n          className={cx(\n            \"px-[8px] flex items-center h-[32px] text-[14px] leading-[22px] text-[#FFFFFF] bg-[#323233] rounded-[2px] no-wrap\",\n            className\n          )}\n        >\n          {text}\n        </div>\n      }\n      // TODO: expand features\n      // delay={delay}\n      offsetOptions={7}\n      trigger={trigger}\n      {...props}\n    >\n      {children}\n    </Popover>\n  );\n};\n\nexport default ToolTip;\n",
+    "extractionMethod": "manual",
+    "directory": "src/components/ToolTip",
+    "componentType": "class",
+    "features": []
+  },
+  {
+    "id": "/Users/lakmal/Projects/vsProjects/AIML/poc_rag_builder/Custom-ui/src/hooks/useMainScroller.ts::UseMainScroller",
+    "name": "UseMainScroller",
+    "file": "Custom-ui/src/hooks/useMainScroller.ts",
+    "props": {},
+    "description": "A UseMainScroller page component with side effects capabilities.",
+    "raw": "import { useEffect } from \"react\";\nimport { create } from \"zustand\";\nimport { throttle } from \"lodash-es\";\n\ninterface MainScrollerStore {\n  mainScrollerDistance: number;\n  setMainScrollerDistance: (distance: number) => void;\n}\n\nconst mainScrollerStore = create<MainScrollerStore>((set) => ({\n  mainScrollerDistance: 0,\n  setMainScrollerDistance: (distance) =>\n    set({ mainScrollerDistance: distance }),\n}));\n\nexport const useSetMainScroller = () => {\n  const setMainScrollerDistance = mainScrollerStore(\n    (state) => state.setMainScrollerDistance\n  );\n\n  useEffect(() => {\n    setMainScrollerDistance(window.pageYOffset);\n    const handleScroll = throttle((evt: Event) => {\n      setMainScrollerDistance(window.pageYOffset);\n    }, 50);\n    window.addEventListener(\"scroll\", handleScroll);\n    return () => window.removeEventListener(\"scroll\", handleScroll);\n  }, []);\n};\n\nexport const useMainScrollerDistance = () =>\n  mainScrollerStore((state) => state.mainScrollerDistance);\n",
+    "extractionMethod": "manual",
+    "directory": "src/hooks",
+    "componentType": "functional",
+    "features": []
+  }
+]
