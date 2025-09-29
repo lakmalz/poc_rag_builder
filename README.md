@@ -57,3 +57,7 @@ Here are some example queries you can use to test your system:
 
 special:
 Can you give me the sample button implementation
+
+Can you give me the example for CustomDropdown implementation
+
+Can you give me the example implementaion for CustomDropDown
