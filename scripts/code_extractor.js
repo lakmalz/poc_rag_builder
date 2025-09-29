@@ -5,10 +5,18 @@ const reactDocgenTs = require("react-docgen-typescript");
 
 class RepositoryWideExtractor {
   static extractComponents() {
+
     // Extract from entire repository, not just components folder
     const repoRoot = path.join(__dirname, "..", "Custom-ui");
-    const outFile = path.join(__dirname, "..", "build-index", "component_docs.json");
-    
+    const buildIndexDir = path.join(__dirname, "..", "build-index");
+    const outFile = path.join(buildIndexDir, "component_docs.json");
+
+    // Ensure build-index directory exists
+    if (!fs.existsSync(buildIndexDir)) {
+      fs.mkdirSync(buildIndexDir, { recursive: true });
+      console.log(`📁 Created missing directory: ${buildIndexDir}`);
+    }
+
     // If output file exists, skip extraction
     if (fs.existsSync(outFile)) {
       console.log(`⚠️ Output file already exists: ${outFile}`);
@@ -53,26 +61,6 @@ class RepositoryWideExtractor {
 
     console.log(`📄 Found ${files.length} React/TypeScript files across the repository`);
     
-    // Analyze directory distribution
-    const dirStats = {};
-    files.forEach(file => {
-      const relativePath = path.relative(repoRoot, file);
-      const dir = path.dirname(relativePath);
-      const topLevelDir = dir.split(path.sep)[0] || 'root';
-      dirStats[topLevelDir] = (dirStats[topLevelDir] || 0) + 1;
-    });
-    
-    console.log(`\n📊 File distribution by directory:`);
-    Object.entries(dirStats).forEach(([dir, count]) => {
-      console.log(`   📁 ${dir}: ${count} files`);
-    });
-    debugInfo.directoryStats = dirStats;
-
-    // Show sample files from different directories
-    console.log(`\n📋 Sample files to be processed:`);
-    const sampleFiles = files.slice(0, 10);
-    sampleFiles.forEach(f => console.log(`   - ${path.relative(repoRoot, f)}`));
-    if (files.length > 10) console.log(`   ... and ${files.length - 10} more files`);
 
     // Enhanced parser configuration
     let parser;
@@ -778,129 +766,14 @@ class RepositoryWideExtractor {
       }
     });
 
-    // Post-processing and analysis
-    components.sort((a, b) => a.name.localeCompare(b.name));
-
-    // Analyze component distribution
-    const componentsByDirectory = {};
-    components.forEach(comp => {
-      const dir = comp.directory || 'root';
-      const topDir = dir.split('/')[0] || 'root';
-      componentsByDirectory[topDir] = (componentsByDirectory[topDir] || 0) + 1;
-    });
-
-    const summary = {
-      totalFiles: processedFiles,
-      totalComponents: components.length,
-      componentsWithProps: components.filter(c => Object.keys(c.props || {}).length > 0).length,
-      componentsWithDescription: components.filter(c => c.description && c.description.length > 10).length,
-      averagePropsPerComponent: components.length > 0 ? 
-        (components.reduce((sum, c) => sum + Object.keys(c.props || {}).length, 0) / components.length).toFixed(1) : 0,
-      skippedNoExports,
-      skippedNonComponents,
-      extractionMethods: {
-        automatic: components.filter(c => c.extractionMethod === 'automatic').length,
-        manual: components.filter(c => c.extractionMethod === 'manual').length
-      },
-      componentTypes: {
-        functional: components.filter(c => c.componentType === 'functional').length,
-        forwardRef: components.filter(c => c.componentType === 'forwardRef').length,
-        class: components.filter(c => c.componentType === 'class').length,
-        memoized: components.filter(c => c.componentType === 'memoized').length
-      },
-      componentsByDirectory,
-      topDirectories: Object.keys(componentsByDirectory).sort((a, b) => 
-        componentsByDirectory[b] - componentsByDirectory[a]
-      )
-    };
-
-    // Summary output
-    console.log(`\n🎉 ========== REPOSITORY-WIDE EXTRACTION COMPLETE ==========`);
-    console.log(`📁 Repository: ${path.basename(repoRoot)}`);
-    console.log(`🔍 Files scanned: ${files.length}`);
-    console.log(`📄 Files processed: ${summary.totalFiles}`);
-    console.log(`⚛️  Total components found: ${summary.totalComponents}`);
-    console.log(`📋 Components with props: ${summary.componentsWithProps} (${((summary.componentsWithProps/summary.totalComponents)*100).toFixed(1)}%)`);
-    console.log(`📝 Components with descriptions: ${summary.componentsWithDescription} (${((summary.componentsWithDescription/summary.totalComponents)*100).toFixed(1)}%)`);
-    console.log(`📊 Average props per component: ${summary.averagePropsPerComponent}`);
-
-    console.log(`\n📂 Components by directory:`);
-    Object.entries(componentsByDirectory)
-      .sort((a, b) => b[1] - a[1])
-      .forEach(([dir, count]) => {
-        console.log(`   📁 ${dir}: ${count} components`);
-      });
-
-    console.log(`\n🔧 Component types:`);
-    console.log(`   • Functional: ${summary.componentTypes.functional}`);
-    console.log(`   • ForwardRef: ${summary.componentTypes.forwardRef}`);
-    console.log(`   • Class: ${summary.componentTypes.class}`);
-    console.log(`   • Memoized: ${summary.componentTypes.memoized}`);
-
-    console.log(`\n🛠️  Extraction methods:`);
-    console.log(`   • Automatic: ${summary.extractionMethods.automatic}`);
-    console.log(`   • Manual: ${summary.extractionMethods.manual}`);
-
     // Write output file with logging
     try {
-      console.log(`\n� Attempting to write output to: ${outFile}`);
       fs.writeFileSync(outFile, JSON.stringify(components, null, 2));
       console.log(`📝 Successfully wrote output to: ${outFile}`);
     } catch (err) {
       console.error(`❌ Error writing output file: ${outFile}`);
       console.error(err);
     }
-
-    // Show top components for verification
-    if (components.length > 0) {
-      console.log(`\n🌟 Sample extracted components:`);
-      const topComponents = components
-        .filter(c => Object.keys(c.props || {}).length > 0)
-        .slice(0, 5);
-
-      topComponents.forEach((comp, index) => {
-        console.log(`   ${index + 1}. ${comp.name} (${comp.directory})`);
-        console.log(`      📋 ${Object.keys(comp.props).length} props`);
-        console.log(`      🔧 ${comp.componentType} component`);
-        console.log(`      📝 ${comp.description.substring(0, 60)}...`);
-      });
-
-      if (components.length > 5) {
-        console.log(`   ... and ${components.length - 5} more components`);
-      }
-    }
-
-    // Detection analysis
-    const detectedComponents = debugInfo.detectionResults.filter(r => r.isComponent);
-    const skippedComponents = debugInfo.detectionResults.filter(r => !r.isComponent);
-    
-    console.log(`\n🔍 Detection analysis:`);
-    console.log(`   ✅ Files detected as components: ${detectedComponents.length}`);
-    console.log(`   ❌ Files skipped: ${skippedComponents.length}`);
-    
-    if (detectedComponents.length > 0) {
-      const avgConfidence = detectedComponents.reduce((sum, r) => sum + r.confidence, 0) / detectedComponents.length;
-      console.log(`   📊 Average detection confidence: ${avgConfidence.toFixed(1)}`);
-    }
-    
-    // Show common skip reasons
-    if (skippedComponents.length > 0) {
-      const skipReasons = {};
-      skippedComponents.forEach(comp => {
-        skipReasons[comp.reason] = (skipReasons[comp.reason] || 0) + 1;
-      });
-      
-      console.log(`\n❌ Common reasons for skipping files:`);
-      Object.entries(skipReasons)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .forEach(([reason, count]) => {
-          console.log(`   • ${reason}: ${count} files`);
-        });
-    }
-    
-    console.log(`\n✨ Repository-wide extraction completed successfully!`);
-    console.log(`📊 Check the output file for complete component documentation.`);
   }
 }
 

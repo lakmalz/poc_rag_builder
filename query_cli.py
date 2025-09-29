@@ -6,6 +6,8 @@ from sentence_transformers import SentenceTransformer
 import typer
 from typing import List, Dict, Any
 
+import requests
+
 app = typer.Typer()
 
 class ComponentQueryer:
@@ -105,7 +107,34 @@ class ComponentQueryer:
 queryer = ComponentQueryer()
 
 @app.command()
-def query(q: str, k: int = 5, per_component: int = 1):
+def call_ollama_llm(rag_response: str, prompt: str, model: str = "llama2") -> str:
+    """
+    Call Ollama LLM API with the RAG response and prompt.
+    """    
+    url = "http://localhost:11434/api/generate"
+    payload = {
+        "model": "llama2",
+        "prompt": f"{prompt}\n\nContext:\n{rag_response}",
+        "stream": False
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("response", "")
+    except Exception as e:
+        return f"[Ollama API error: {e}]"
+
+DEFAULT_OLLAMA_PROMPT = (
+    "You are an expert React developer. "
+    "Given the following context from component documentation and code snippets, "
+    "answer the user's question as clearly and concisely as possible. "
+    "If relevant, provide code examples, usage advice, and highlight best practices. "
+    "If the answer is not in the context, say so."
+)
+
+@app.command()
+def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAULT_OLLAMA_PROMPT, ollama_model: str = "llama3"):
     """
     Query the component database for similar components.
     
@@ -118,16 +147,27 @@ def query(q: str, k: int = 5, per_component: int = 1):
         results = queryer.query_components(q, k, per_component)
         
         # Print results in the same format as the original
+        rag_texts = []
         for r in results:
             print(f"\nComponent: {r['component_name']}  (score: {r['best_score']:.4f})")
             print("File:", r['file'])
             for c in r["top_chunks"]:
                 print("--- snippet ---")
-                print(c["text"][:800].strip())
+                snippet = c["text"][:800].strip()
+                print(snippet)
+                rag_texts.append(snippet)
         
         if not results:
             print("No matches found.")
-            
+            return
+
+        # Send RAG response to Ollama
+        rag_response = "\n\n".join(rag_texts)
+        print("\n[Calling Ollama LLM...]")
+        ollama_output = call_ollama_llm(rag_response, ollama_prompt, ollama_model)
+        print("\n[Ollama LLM Response]:\n")
+        print(ollama_output)
+        
     except ValueError as e:
         print(f"Error: {e}")
         print("Make sure to run 'python index_components.py' first to build the index.")
