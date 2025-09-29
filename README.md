@@ -7,12 +7,9 @@
 
 # Packages (PYTHON)
 # pip install sentence-transformers numpy typer tqdm
-# faiss-cpu via pip (may fail on mac): 
-# pip install faiss-cpu
 
 # For embedding
-# pip install -U sentence-transformers 
-# 
+# pip install -U sentence-transformers
 
 # Ex:
 # code run
@@ -32,15 +29,28 @@
     --per-component 10: This means "for each component, return up to 10 code snippets or chunks."
 
 
-
-
-
 [React repo] 
      ↓ (Node extractor)
 component_docs.json 
      ↓ (Python ingestion & chunking)
 component_chunks.json 
-     ↓ (Embedding + FAISS index)
-components.faiss + chunks_meta.json
+     ↓ (Embedding + index and store in chromadb)
+chromadb
      ↓ (Query CLI)
 Retrieve relevant components and snippets
+
+
+sample questions to test.
+
+Here are some example queries you can use to test your system:
+
+"How do I create a modal dialog?"
+"Show me code for a tooltip component."
+"What props does the Select component accept?"
+"How can I use the Tabs component in my app?"
+"Give me an example of a form with validation."
+"How do I customize the Pagination component?"
+"Show code for a responsive dropdown menu."
+"How do I implement a toast notification?"
+"What is the structure of the PinForm component?"
+"How do I add icons to a button?"
