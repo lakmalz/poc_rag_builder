@@ -113,11 +113,12 @@ def call_ollama_llm(rag_response: str, prompt: str, model: str = "llama2") -> st
     """    
     url = "http://localhost:11434/api/generate"
     payload = {
-        "model": "llama2",
+        "model": "llama3.1",
         "prompt": f"{prompt}\n\nContext:\n{rag_response}",
         "stream": False
     }
     try:
+        print(f"[Calling Ollama API... Payload : {payload}]")
         resp = requests.post(url, json=payload, timeout=60)
         resp.raise_for_status()
         data = resp.json()
