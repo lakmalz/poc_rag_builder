@@ -54,3 +54,6 @@ Here are some example queries you can use to test your system:
 "How do I implement a toast notification?"
 "What is the structure of the PinForm component?"
 "How do I add icons to a button?"
+
+special:
+Can you give me the sample button implementation
