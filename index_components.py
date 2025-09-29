@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 import chromadb
 from chromadb.config import Settings
-from sentence_transformers import SentenceTransformer
 
 
 class ComponentIndexer:
