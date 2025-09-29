@@ -11,6 +11,13 @@ class RepositoryWideExtractor {
     const buildIndexDir = path.join(__dirname, "..", "build-index");
     const outFile = path.join(buildIndexDir, "component_docs.json");
 
+    // Stop process if repository does not exist
+    if (!fs.existsSync(repoRoot)) {
+      console.error(`❌ Repository directory not found: ${repoRoot}`);
+      console.error('🛑 Extraction stopped. Please provide a valid repository.');
+      return;
+    }
+
     // Ensure build-index directory exists
     if (!fs.existsSync(buildIndexDir)) {
       fs.mkdirSync(buildIndexDir, { recursive: true });
