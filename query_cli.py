@@ -198,7 +198,7 @@ def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAU
         print("\n[Calling Ollama LLM...]")
         print(f"RAG Response:\n{rag_response}\n")
         print(f"Ollama Prompt:\n{ollama_prompt}\n")
-        ollama_output = call_ollama_llm(rag_response, ollama_prompt, ollama_model)
+        ollama_output = call_cloud_llm(rag_response, ollama_prompt, ollama_model)
 
         snippets = extract_code_snippet(ollama_output)
         for code in snippets:
