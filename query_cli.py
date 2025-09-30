@@ -135,7 +135,7 @@ DEFAULT_OLLAMA_PROMPT = (
 )
 
 @app.command()
-def call_ollama_llm(rag_response: str, prompt: str, model: str = "llama2") -> str:
+def call_cloud_llm(rag_response: str, prompt: str, model: str = "llama2") -> str:
     """
     Call Cloude LLM API with the RAG response and prompt.
     """    
