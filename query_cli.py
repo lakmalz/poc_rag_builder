@@ -165,6 +165,8 @@ def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAU
         # Send RAG response to Ollama
         rag_response = "\n\n".join(rag_texts)
         print("\n[Calling Ollama LLM...]")
+        print(f"RAG Response:\n{rag_response}\n")
+        print(f"Ollama Prompt:\n{ollama_prompt}\n")
         ollama_output = call_ollama_llm(rag_response, ollama_prompt, ollama_model)
         print("\n[Ollama LLM Response]:\n")
         print(ollama_output)
