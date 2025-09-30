@@ -24,12 +24,12 @@ class RepositoryWideExtractor {
       console.log(`📁 Created missing directory: ${buildIndexDir}`);
     }
 
-    // If output file exists, skip extraction
-    // if (fs.existsSync(outFile)) {
-    //   console.log(`⚠️ Output file already exists: ${outFile}`);
-    //   console.log('⏩ Skipping extraction. Delete the file to regenerate.');
-    //   return;
-    // }
+    //If output file exists, skip extraction
+    if (fs.existsSync(outFile)) {
+      console.log(`⚠️ Output file already exists: ${outFile}`);
+      console.log('⏩ Skipping extraction. Delete the file to regenerate.');
+      return;
+    }
 
     console.log(`\n🔍 Starting repository-wide extraction from: ${repoRoot}`);
     console.log(`📁 Repository exists: ${fs.existsSync(repoRoot)}`);
