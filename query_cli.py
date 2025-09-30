@@ -5,7 +5,7 @@ from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 import typer
 from typing import List, Dict, Any
-
+import re
 import requests
 
 app = typer.Typer()
@@ -135,6 +135,37 @@ DEFAULT_OLLAMA_PROMPT = (
 )
 
 @app.command()
+def call_ollama_llm(rag_response: str, prompt: str, model: str = "llama2") -> str:
+    """
+    Call Cloude LLM API with the RAG response and prompt.
+    """    
+    url = "url"
+    api_key = "your_api_key_here"  # Replace with your actual API key
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }   
+
+    content = f"{prompt}\n\nContext:\n{rag_response}"
+    messages = [{"role": "system", "content": content}]
+    request_payload = {
+        "messages": messages,
+        "stream": False,
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=request_payload, timeout=60, verify=False)
+        response.raise_for_status()
+        return response.json()
+
+    except requests.exceptions.Timeout as e:
+        return RuntimeError(f"[Cloude API timeout: {e}]")
+    except requests.exceptions.RequestException as e:
+        return RuntimeError(f"[Cloude API error: {e}]")
+    except json.JSONDecodeError as e:
+        return RuntimeError(f"[Cloude API JSON decode error: {e}]") 
+
+@app.command()
 def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAULT_OLLAMA_PROMPT, ollama_model: str = "llama3"):
     """
     Query the component database for similar components.
@@ -168,6 +199,11 @@ def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAU
         print(f"RAG Response:\n{rag_response}\n")
         print(f"Ollama Prompt:\n{ollama_prompt}\n")
         ollama_output = call_ollama_llm(rag_response, ollama_prompt, ollama_model)
+
+        snippets = extract_code_snippet(ollama_output)
+        for code in snippets:
+            print(code)
+
         print("\n[Ollama LLM Response]:\n")
         print(ollama_output)
         
@@ -176,6 +212,20 @@ def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAU
         print("Make sure to run 'python index_components.py' first to build the index.")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
+
+def extract_code_snippet(text):
+    # Try to find code between triple backticks first
+    code_blocks = re.findall(r"```(?:\w*\n)?(.*?)```", text, re.DOTALL)
+    if code_blocks:
+        return code_blocks
+
+    # Fallback: extract after "example code snippet" up to "Advice" or next section
+    match = re.search(r"example code snippet.*?:(.*?)(Advice|Best Practices|1\.|\n\*)", text, re.DOTALL | re.IGNORECASE)
+    if match:
+        return [match.group(1).strip()]
+    return []
+
 
 @app.command()
 def info():
