@@ -61,3 +61,5 @@ Can you give me the sample button implementation
 Can you give me the example for CustomDropdown implementation
 
 Can you give me the example implementaion for CustomDropDown
+
+How do I use the ProfilePage component is a React page? Please iclude all props with example values

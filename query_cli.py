@@ -198,7 +198,11 @@ def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAU
         print("\n[Calling Ollama LLM...]")
         print(f"RAG Response:\n{rag_response}\n")
         print(f"Ollama Prompt:\n{ollama_prompt}\n")
-        ollama_output = call_cloud_llm(rag_response, ollama_prompt, ollama_model)
+        props = extract_props_list(rag_response)
+        print(f"Extracted Props: {props}\n")
+        props_str = format_props_for_prompt(props)
+        llm_prompt = ollama_prompt + props_str
+        ollama_output = call_ollama_llm(rag_response, llm_prompt, ollama_model)
 
         snippets = extract_code_snippet(ollama_output)
         for code in snippets:
@@ -213,6 +217,30 @@ def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAU
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+def format_props_for_prompt(props):
+    """
+    Format the extracted props as a string for inclusion in the LLM prompt.
+    """
+    if props:
+        return "\nProps for this component:\n" + "\n".join([f"- {p['name']}" for p in props])
+    return ""
+
+def extract_props_list(rag_response: str):
+    # Try to find the ProfilePage function signature
+    match = re.search(r'ProfilePage: React FC<ProfilePageProps> = \(\s*([^)]+)\)', rag_response)
+    props = []
+    if match:
+        # Extract prop names from signature
+        prop_names = [p.strip() for p in match.group(1).split(',') if p.strip()]
+        for name in prop_names:
+            props.append({'name': name, 'type': 'unknown'})
+    # Try to find useState form object keys
+    form_match = re.search(r'setForm = useState\(\s*([^)]+)\)', rag_response)
+    if form_match:
+        keys = re.findall(r'(\w+):', form_match.group(1))
+        for key in keys:
+            props.append({'name': key, 'type': 'unknown'})
+    return props
 
 def extract_code_snippet(text):
     # Try to find code between triple backticks first
