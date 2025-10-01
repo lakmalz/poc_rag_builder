@@ -222,24 +222,24 @@ def format_props_for_prompt(props):
     Format the extracted props as a string for inclusion in the LLM prompt.
     """
     if props:
-        return "\nProps for this component:\n" + "\n".join([f"- {p['name']}" for p in props])
+        return "\nProps for this component:\n" + "\n".join([f"- {p}" for p in [p['name'] for p in props]])
     return ""
 
 def extract_props_list(rag_response: str):
-    # Try to find the ProfilePage function signature
-    match = re.search(r'ProfilePage: React FC<ProfilePageProps> = \(\s*([^)]+)\)', rag_response)
     props = []
+    # Match any React FC/FunctionComponent signature
+    match = re.search(
+        r'(\w+):\s*React\s+FC<([\w]+Props)>?\s*=\s*\(\s*([^)]+)\)', rag_response
+    )
     if match:
         # Extract prop names from signature
-        prop_names = [p.strip() for p in match.group(1).split(',') if p.strip()]
-        for name in prop_names:
-            props.append({'name': name, 'type': 'unknown'})
-    # Try to find useState form object keys
-    form_match = re.search(r'setForm = useState\(\s*([^)]+)\)', rag_response)
-    if form_match:
-        keys = re.findall(r'(\w+):', form_match.group(1))
-        for key in keys:
-            props.append({'name': key, 'type': 'unknown'})
+        prop_names = [p.strip() for p in match.group(3).split(',') if p.strip()]
+        props.extend(prop_names)
+    # Match any useState object initialization
+    form_matches = re.findall(r'useState\(\s*([^)]+)\)', rag_response)
+    for form in form_matches:
+        keys = re.findall(r'(\w+):', form)
+        props.extend(keys)
     return props
 
 def extract_code_snippet(text):
