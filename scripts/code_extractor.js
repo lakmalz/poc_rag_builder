@@ -588,42 +588,62 @@ class RepositoryWideExtractor {
       }
       console.log(`[DEBUG] Parsing props content:`, propDefinitions);
       propDefinitions.forEach(definition => {
-        const propMatch = definition.match(/^([\w$]+)(\?)?:\s*([^;]+?)(?:\s*\/\*\*(.+?)\*\/)?$/);
-        if (propMatch) {
-          const [, propName, isOptional, propType, comment] = propMatch;
-          let typeName = propType.trim().replace(/[,;]$/, '');
-          let nestedProps = null;
-          if (/^[A-Z][A-Za-z0-9_]+$/.test(typeName) && typeName !== 'ReactNode' && typeName !== 'ReactElement') {
-            let typeFilePath = parentFilePath;
-            let typeContent = '';
-            if (fs.existsSync(typeFilePath)) {
-              typeContent = fs.readFileSync(typeFilePath, 'utf8');
-              let typeRegex = new RegExp(`interface\\s+${typeName}\\s*{([^}]+)}`);
-              let typeMatch = typeRegex.exec(typeContent);
-              if (!typeMatch) {
-                typeRegex = new RegExp(`type\\s+${typeName}\\s*=\\s*{([^}]+)}`);
+        // Split multi-line/grouped definitions into individual lines
+        definition.split(/;|\n/).forEach(line => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+          // Match function type: onAccept?: (form: UserProfile) => void
+          const funcMatch = trimmed.match(/^([\w$]+)(\?)?:\s*\(([^)]*)\)\s*=>\s*([^;]+)$/);
+          if (funcMatch) {
+            const [, propName, isOptional, params, returnType] = funcMatch;
+            props[propName] = {
+              name: propName,
+              type: { name: `(${params}) => ${returnType}` },
+              required: !isOptional,
+              description: generatePropDescription(propName, `function`),
+              defaultValue: null,
+              functionParams: params.split(',').map(p => p.trim()).filter(Boolean),
+              functionReturnType: returnType.trim()
+            };
+            return;
+          }
+          // Match normal prop or nested type
+          const propMatch = trimmed.match(/^([\w$]+)(\?)?:\s*([^;]+?)(?:\s*\/\*\*(.+?)\*\/)?$/);
+          if (propMatch) {
+            const [, propName, isOptional, propType, comment] = propMatch;
+            let typeName = propType.trim().replace(/[,;]$/, '');
+            let nestedProps = null;
+            // If typeName is a custom type, try to resolve recursively
+            if (/^[A-Z][A-Za-z0-9_]+$/.test(typeName) && typeName !== 'ReactNode' && typeName !== 'ReactElement') {
+              let typeContent = '';
+              let typeMatch = null;
+              if (fs.existsSync(parentFilePath)) {
+                typeContent = fs.readFileSync(parentFilePath, 'utf8');
+                let typeRegex = new RegExp(`interface\\s+${typeName}\\s*{([^}]+)}`);
                 typeMatch = typeRegex.exec(typeContent);
+                if (!typeMatch) {
+                  typeRegex = new RegExp(`type\\s+${typeName}\\s*=\\s*{([^}]+)}`);
+                  typeMatch = typeRegex.exec(typeContent);
+                }
               }
-              if (typeMatch && typeMatch[1]) {
-                console.log(`[DEBUG] Found nested type '${typeName}' in file '${typeFilePath}'. Recursively parsing...`);
-                nestedProps = parsePropsContent(typeMatch[1], typeFilePath);
-              } else {
-                const importMatch = typeContent.match(new RegExp(`import\\s+\\{\\s*${typeName}\\s*\\}\\s+from\\s+["'](.+?)["']`));
+              if (!typeMatch) {
+                const importRegex = new RegExp(`import\\s+\\{\\s*${typeName}\\s*\\}\\s+from\\s+["'](.+?)["']`);
+                const importMatch = typeContent.match(importRegex);
                 if (importMatch) {
                   let importPath = importMatch[1];
                   let importFile = importPath;
                   if (!importFile.endsWith('.ts') && !importFile.endsWith('.tsx')) {
-                    importFile = path.join(path.dirname(typeFilePath), importPath + '.ts');
+                    importFile = path.join(path.dirname(parentFilePath), importPath + '.ts');
                     if (!fs.existsSync(importFile)) {
-                      importFile = path.join(path.dirname(typeFilePath), importPath + '.tsx');
+                      importFile = path.join(path.dirname(parentFilePath), importPath + '.tsx');
                     }
                   } else {
-                    importFile = path.join(path.dirname(typeFilePath), importPath);
+                    importFile = path.join(path.dirname(parentFilePath), importPath);
                   }
                   if (fs.existsSync(importFile)) {
                     const importContent = fs.readFileSync(importFile, 'utf8');
                     let typeRegex = new RegExp(`interface\\s+${typeName}\\s*{([^}]+)}`);
-                    let typeMatch = typeRegex.exec(importContent);
+                    typeMatch = typeRegex.exec(importContent);
                     if (!typeMatch) {
                       typeRegex = new RegExp(`type\\s+${typeName}\\s*=\\s*{([^}]+)}`);
                       typeMatch = typeRegex.exec(importContent);
@@ -638,24 +658,25 @@ class RepositoryWideExtractor {
                     console.log(`[DEBUG] Imported file for nested type '${typeName}' does not exist: '${importFile}'`);
                   }
                 } else {
-                  console.log(`[DEBUG] Could not find import for nested type '${typeName}' in file '${typeFilePath}'.`);
+                  console.log(`[DEBUG] Could not find import for nested type '${typeName}' in file '${parentFilePath}'.`);
                 }
+              } else if (typeMatch && typeMatch[1]) {
+                console.log(`[DEBUG] Found nested type '${typeName}' in file '${parentFilePath}'. Recursively parsing...`);
+                nestedProps = parsePropsContent(typeMatch[1], parentFilePath);
               }
-            } else {
-              console.log(`[DEBUG] Type file path does not exist for nested type '${typeName}': '${typeFilePath}'`);
             }
+            props[propName] = {
+              name: propName,
+              type: { name: typeName },
+              required: !isOptional,
+              description: comment?.trim() || generatePropDescription(propName, typeName),
+              defaultValue: null,
+              ...(nestedProps ? { nestedProps } : {})
+            };
+          } else {
+            console.log(`[DEBUG] Could not parse prop definition: '${trimmed}'`);
           }
-          props[propName] = {
-            name: propName,
-            type: { name: typeName },
-            required: !isOptional,
-            description: comment?.trim() || generatePropDescription(propName, typeName),
-            defaultValue: null,
-            ...(nestedProps ? { nestedProps } : {})
-          };
-        } else {
-          console.log(`[DEBUG] Could not parse prop definition: '${definition}'`);
-        }
+        });
       });
       console.log(`[DEBUG] Final parsed props object:`, props);
       return props;
