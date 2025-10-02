@@ -82,6 +82,19 @@ class ComponentIngestor:
             )
             chunks.extend(code_chunks)
         
+        # Chunk 4: Interface code (if exists)
+        if component.get('interfaceCode'):
+            interface_code = component['interfaceCode']
+            cleaned_interface_code = self.clean_code_for_search(interface_code)
+            if cleaned_interface_code:
+                chunks.append({
+                    "chunk_id": f"{component_id}_interface",
+                    "component_id": component_id,
+                    "component_name": component_name,
+                    "file": file_path,
+                    "chunk_type": "interface_code",
+                    "text": f"{component_name} interface definition: {cleaned_interface_code}"
+                })
         return chunks
     
     def format_props_info(self, props: Dict[str, Any], component_name: str) -> str:
