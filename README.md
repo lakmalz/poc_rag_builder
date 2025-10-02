@@ -63,3 +63,19 @@ Can you give me the example for CustomDropdown implementation
 Can you give me the example implementaion for CustomDropDown
 
 How do I use the ProfilePage component is a React page? Please iclude all props with example values
+
+
+put into (tsconfig.json)
+
+ "include": [
+     "next-env.d.ts", 
+     "**/*.ts", 
+     "**/*.tsx", 
+     "**/*.interface.js", 
+     "**/*.interface.ts", 
+     "**/*.style.ts", 
+     ".next/types/**/*.ts",
+     "src/types/*",
+     ],
+
+ "exclude": ["node_modules"]
