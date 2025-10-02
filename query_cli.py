@@ -130,17 +130,20 @@ DEFAULT_OLLAMA_PROMPT = (
     "You are an expert React developer. "
     "Given the following context from component documentation and code snippets, "
     "answer the user's question as clearly and concisely as possible. "
-    "If relevant, provide code examples, usage advice, and highlight best practices. "
+    "If the user asks how to use a component, provide a complete example code snippet showing how to use it in a React page, including all props with example values. "
+    "Also include usage advice and highlight best practices. "
     "If the answer is not in the context, say so."
 )
+## Add the example for developing a React component with props for dev example usages
 
 @app.command()
 def call_cloud_llm(rag_response: str, prompt: str, model: str = "llama2") -> str:
     """
     Call Cloude LLM API with the RAG response and prompt.
     """    
-    url = "url"
+    url = "url" # Replace with actual Cloude API URL
     api_key = "your_api_key_here"  # Replace with your actual API key
+    
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
@@ -154,9 +157,17 @@ def call_cloud_llm(rag_response: str, prompt: str, model: str = "llama2") -> str
     }
     
     try:
-        response = requests.post(url, headers=headers, json=request_payload, timeout=60, verify=False)
+        print(f"[Calling Cloude API... Payload : {request_payload}]")
+        response = requests.post(
+            url, 
+            headers=headers, 
+            json=request_payload, 
+            timeout=120, 
+            verify=False)
+        
         response.raise_for_status()
-        return response.json()
+        print(json.dumps(response.json(), indent=2))
+        return json.dumps(response.json())
 
     except requests.exceptions.Timeout as e:
         return RuntimeError(f"[Cloude API timeout: {e}]")
@@ -166,7 +177,7 @@ def call_cloud_llm(rag_response: str, prompt: str, model: str = "llama2") -> str
         return RuntimeError(f"[Cloude API JSON decode error: {e}]") 
 
 @app.command()
-def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAULT_OLLAMA_PROMPT, ollama_model: str = "llama3"):
+def query(q: str, k: int = 5, per_component: int = 1, llm_prompt: str = DEFAULT_OLLAMA_PROMPT, ollama_model: str = "llama3"):
     """
     Query the component database for similar components.
     
@@ -216,27 +227,38 @@ def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAU
 
         # Send RAG response to Ollama
         rag_response = "\n\n".join(rag_texts)
-        print("\n[Calling Ollama LLM...]")
+        print("\n[Calling LLM...]")
         print(f"RAG Response:\n{rag_response}\n")
-        print(f"Ollama Prompt:\n{ollama_prompt}\n")
+        print(f"LLM Prompt:\n{llm_prompt}\n")
+
         props = extract_props_list(rag_response)
         print(f"Extracted Props: {props}\n")
+        
         props_str = format_props_for_prompt(props)
-        llm_prompt = ollama_prompt + props_str
-        ollama_output = call_ollama_llm(rag_response, llm_prompt, ollama_model)
+        llm_prompt_with_props = llm_prompt + props_str
+        
+        llm_output = call_ollama_llm(rag_response, llm_prompt_with_props, ollama_model)
 
-        snippets = extract_code_snippet(ollama_output)
-        for code in snippets:
-            print(code)
+        message_object = get_message_content(llm_output)
+        print("----------------------------------------------------------------")
+        extract_code_snippet(message_object)
 
-        print("\n[Ollama LLM Response]:\n")
-        print(ollama_output)
+        print("----------------------------------------------------------------")
         
     except ValueError as e:
         print(f"Error: {e}")
         print("Make sure to run 'python index_components.py' first to build the index.")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
+def get_message_content(json_data: str) -> str:
+    try:
+        data = json.loads(json_data)
+        message = data["choices"][0]["message"]["content"]
+        return message
+    except (json.JSONDecodeError, KeyError, IndexError) as e:
+        print(f"Error decoding JSON: {e}")
+        return ""
 
 def format_props_for_prompt(props):
     """
@@ -263,17 +285,19 @@ def extract_props_list(rag_response: str):
         props.extend(keys)
     return props
 
-def extract_code_snippet(text):
-    # Try to find code between triple backticks first
-    code_blocks = re.findall(r"```(?:\w*\n)?(.*?)```", text, re.DOTALL)
+def extract_code_snippet(content):
+    # Try to find code between triple backticks
+    code_blocks = re.findall(r"```(?:\w*\n)?(.*?)```", content, re.DOTALL)
     if code_blocks:
-        return code_blocks
-
-    # Fallback: extract after "example code snippet" up to "Advice" or next section
-    match = re.search(r"example code snippet.*?:(.*?)(Advice|Best Practices|1\.|\n\*)", text, re.DOTALL | re.IGNORECASE)
-    if match:
-        return [match.group(1).strip()]
-    return []
+        for code in code_blocks:
+            print(code.strip())
+    else:
+        match = re.search(r"(import React.*?export default\s+\w+;)", content, re.DOTALL)
+        if match:
+            print(match.group(1).strip())
+            return
+        else:
+            print("[No code snippet found in the LLM response]")
 
 
 @app.command()
