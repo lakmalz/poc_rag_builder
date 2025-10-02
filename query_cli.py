@@ -188,39 +188,7 @@ def query(q: str, k: int = 5, per_component: int = 1, llm_prompt: str = DEFAULT_
     """
     try:
         results = queryer.query_components(q, k, per_component)
-        
-        # Print results in the same format as the original
-
-        rag_texts = []
-        for r in results:
-            print(f"\nComponent: {r['component_name']}  (score: {r['best_score']:.4f})")
-            print("File:", r['file'])
-            for c in r["top_chunks"]:
-                print("--- snippet ---")
-                snippet = c["text"][:800].strip()
-                print(snippet)
-                rag_texts.append(snippet)
-            # Try to include interface_code chunk if available
-            # You may need to load all chunks for the component from your DB or from the chunks file
-            # For now, try to load from component_chunks.json
-            try:
-                import json
-                from pathlib import Path
-                chunks_path = Path("build-index/component_chunks.json")
-                if chunks_path.exists():
-                    with open(chunks_path, "r", encoding="utf-8") as f:
-                        all_chunks = json.load(f)
-                    # Find interface_code chunk for this component
-                    for chunk in all_chunks:
-                        if chunk.get("component_id") == r["component_id"] and chunk.get("chunk_type") == "interface_code":
-                            interface_snippet = chunk["text"][:800].strip()
-                            print("--- interface_code ---")
-                            print(interface_snippet)
-                            rag_texts.append(interface_snippet)
-                            break
-            except Exception as e:
-                print(f"[Warning] Could not load interface_code chunk: {e}")
-
+        rag_texts = get_rag_context_for_components(results)
         if not results:
             print("No matches found.")
             return
@@ -233,23 +201,86 @@ def query(q: str, k: int = 5, per_component: int = 1, llm_prompt: str = DEFAULT_
 
         props = extract_props_list(rag_response)
         print(f"Extracted Props: {props}\n")
-        
+
         props_str = format_props_for_prompt(props)
         llm_prompt_with_props = llm_prompt + props_str
-        
+
         llm_output = call_ollama_llm(rag_response, llm_prompt_with_props, ollama_model)
 
         message_object = get_message_content(llm_output)
         print("----------------------------------------------------------------")
         extract_code_snippet(message_object)
-
         print("----------------------------------------------------------------")
-        
+
     except ValueError as e:
         print(f"Error: {e}")
         print("Make sure to run 'python index_components.py' first to build the index.")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
+@app.command()
+def query_find_component(q: str, k: int = 5, per_component: int = 1):    
+    """
+    Query the component database for similar components.
+    
+    Args:
+        q: Query string to search for
+        k: Number of top chunks to retrieve
+        per_component: Number of chunks to show per component
+    """
+    try:
+        results = queryer.query_components(q, k, per_component)
+        rag_texts = get_rag_context_for_components(results)
+        if not results:
+            print("No matches found.")
+            return
+
+        # Send RAG response to Ollama
+        rag_response = "\n\n".join(rag_texts)
+        print(f"RAG Response:\n{rag_response}\n")
+
+        props = extract_props_list(rag_response)
+        print(f"Extracted Props: {props}\n")
+
+    except ValueError as e:
+        print(f"Error: {e}")
+        print("Make sure to run 'python index_components.py' first to build the index.")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
+def get_rag_context_for_components(results):
+    """
+    Given a list of component search results, aggregate code, props, and interface_code chunks for LLM context.
+    """
+    rag_texts = []
+    try:
+        import json
+        from pathlib import Path
+        chunks_path = Path("build-index/component_chunks.json")
+        all_chunks = []
+        if chunks_path.exists():
+            with open(chunks_path, "r", encoding="utf-8") as f:
+                all_chunks = json.load(f)
+    except Exception as e:
+        print(f"[Warning] Could not load all chunks: {e}")
+
+    for r in results:
+        print(f"\nComponent: {r['component_name']}  (score: {r['best_score']:.4f})")
+        print("File:", r['file'])
+        for c in r["top_chunks"]:
+            print("--- snippet ---")
+            snippet = c["text"][:800].strip()
+            print(snippet)
+            rag_texts.append(snippet)
+        # Add interface_code chunk if available
+        for chunk in all_chunks:
+            if chunk.get("component_id") == r["component_id"] and chunk.get("chunk_type") == "interface_code":
+                interface_snippet = chunk["text"][:800].strip()
+                print("--- interface_code ---")
+                print(interface_snippet)
+                rag_texts.append(interface_snippet)
+                break
+    return rag_texts
 
 def get_message_content(json_data: str) -> str:
     try:
