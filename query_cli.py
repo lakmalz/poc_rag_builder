@@ -179,6 +179,7 @@ def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAU
         results = queryer.query_components(q, k, per_component)
         
         # Print results in the same format as the original
+
         rag_texts = []
         for r in results:
             print(f"\nComponent: {r['component_name']}  (score: {r['best_score']:.4f})")
@@ -188,7 +189,27 @@ def query(q: str, k: int = 5, per_component: int = 1, ollama_prompt: str = DEFAU
                 snippet = c["text"][:800].strip()
                 print(snippet)
                 rag_texts.append(snippet)
-        
+            # Try to include interface_code chunk if available
+            # You may need to load all chunks for the component from your DB or from the chunks file
+            # For now, try to load from component_chunks.json
+            try:
+                import json
+                from pathlib import Path
+                chunks_path = Path("build-index/component_chunks.json")
+                if chunks_path.exists():
+                    with open(chunks_path, "r", encoding="utf-8") as f:
+                        all_chunks = json.load(f)
+                    # Find interface_code chunk for this component
+                    for chunk in all_chunks:
+                        if chunk.get("component_id") == r["component_id"] and chunk.get("chunk_type") == "interface_code":
+                            interface_snippet = chunk["text"][:800].strip()
+                            print("--- interface_code ---")
+                            print(interface_snippet)
+                            rag_texts.append(interface_snippet)
+                            break
+            except Exception as e:
+                print(f"[Warning] Could not load interface_code chunk: {e}")
+
         if not results:
             print("No matches found.")
             return
@@ -222,7 +243,7 @@ def format_props_for_prompt(props):
     Format the extracted props as a string for inclusion in the LLM prompt.
     """
     if props:
-        return "\nProps for this component:\n" + "\n".join([f"- {p}" for p in [p['name'] for p in props]])
+        return "\nProps for this component:\n" + "\n".join([f"- {p}" for p in props])
     return ""
 
 def extract_props_list(rag_response: str):
