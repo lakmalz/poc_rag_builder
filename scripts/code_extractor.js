@@ -432,6 +432,7 @@ class RepositoryWideExtractor {
       }
 
       // If still empty, try to extract from all imported interface/type files ending with Props
+      let importedInterfaceCode = null;
       if (!foundLocal && Object.keys(props).length === 0) {
         // Find all imports
         const importRegex = /import\s+\{([^}]+)\}\s+from\s+["'](.+?)["']/g;
@@ -455,6 +456,7 @@ class RepositoryWideExtractor {
               console.log(`[DEBUG] Found imported props type: '${importedType}' from '${interfaceFile}'`);
               if (fs.existsSync(interfaceFile)) {
                 const interfaceContent = fs.readFileSync(interfaceFile, 'utf8');
+                importedInterfaceCode = interfaceContent;
                 // Try to extract the props from the imported type
                 for (const pattern of propPatterns) {
                   // Use importedType instead of componentName
@@ -502,6 +504,8 @@ class RepositoryWideExtractor {
           console.log(`[DEBUG] No imported props type found.`);
         }
       }
+      // Return both props and importedInterfaceCode
+      return { props, importedInterfaceCode };
 
       // Fallback: extract from function parameters
       if (Object.keys(props).length === 0) {
@@ -928,10 +932,10 @@ class RepositoryWideExtractor {
         } catch (parseError) {
           console.log(`   ⚠️  Automatic parser failed: ${parseError.message.substring(0, 100)}...`);
         }
-        
+
         if (!docs || docs.length === 0) {
           console.log(`   🛠️  Using manual extraction`);
-          
+
           const componentName = getComponentName({}, file);
           let component = {
             id: `${file}::${componentName}`,
@@ -945,8 +949,11 @@ class RepositoryWideExtractor {
           };
 
           // Extract props (pass file path as third argument)
-          const extractedProps = extractPropsFromContent(fileContent, componentName, file);
-          component.props = extractDefaultValues(fileContent, extractedProps);
+          const extracted = extractPropsFromContent(fileContent, componentName, file);
+          component.props = extractDefaultValues(fileContent, extracted.props);
+          if (extracted.importedInterfaceCode) {
+            component.interfaceCode = extracted.importedInterfaceCode;
+          }
           console.log(`      📋 Extracted ${Object.keys(component.props).length} props`);
 
           // Extract description
@@ -965,9 +972,9 @@ class RepositoryWideExtractor {
           // Process automatic extraction results
           docs.forEach((doc, docIndex) => {
             const nameCandidate = getComponentName(doc, file);
-            
+
             console.log(`   🔧 Processing automatic component: ${nameCandidate}`);
-            
+
             let component = {
               id: `${file}::${nameCandidate}`,
               name: nameCandidate,
@@ -980,17 +987,20 @@ class RepositoryWideExtractor {
               tags: doc.tags || {},
               directory: path.dirname(relativePath)
             };
-            
+
             // Enhance with manual extraction if needed
             if (Object.keys(component.props).length === 0) {
-              const extractedProps = extractPropsFromContent(fileContent, nameCandidate, file);
-              component.props = extractDefaultValues(fileContent, extractedProps);
+              const extracted = extractPropsFromContent(fileContent, nameCandidate, file);
+              component.props = extractDefaultValues(fileContent, extracted.props);
+              if (extracted.importedInterfaceCode) {
+                component.interfaceCode = extracted.importedInterfaceCode;
+              }
             }
-            
+
             if (!component.description || component.description.length < 5) {
               component.description = extractComponentDescription(fileContent, nameCandidate);
             }
-            
+
             // Add metadata
             component.componentType = detectComponentType(fileContent);
             component.features = [];
@@ -998,7 +1008,7 @@ class RepositoryWideExtractor {
             if (fileContent.includes('useState')) component.features.push('stateful');
             if (fileContent.includes('memo')) component.features.push('memoized');
             if (fileContent.includes('useEffect')) component.features.push('effects');
-            
+
             console.log(`      📋 Final props count: ${Object.keys(component.props).length}`);
             components.push(component);
           });
