@@ -365,6 +365,77 @@ def extract_code_snippet(content):
 
 
 @app.command()
+def get_component_exact(component_name: str):
+    """
+    Retrieve a specific component by exact name match (not semantic search).
+    
+    Args:
+        component_name: Exact name of the component to retrieve
+    """
+    try:
+        import json
+        from pathlib import Path
+        chunks_path = Path("build-index/component_chunks.json")
+        
+        if not chunks_path.exists():
+            print("Error: component_chunks.json not found. Run the pipeline first.")
+            return
+        
+        with open(chunks_path, "r", encoding="utf-8") as f:
+            all_chunks = json.load(f)
+        
+        # Filter chunks for exact component match
+        component_chunks = [
+            chunk for chunk in all_chunks 
+            if chunk.get("component_name") == component_name
+        ]
+        
+        if not component_chunks:
+            print(f"No component found with exact name: {component_name}")
+            return
+        
+        print(f"\n📦 Component: {component_name}")
+        
+        # Get basic info
+        basic_info = next((c for c in component_chunks if c.get("chunk_type") == "basic_info"), None)
+        if basic_info:
+            print(f"📁 File: {basic_info.get('file', 'N/A')}")
+        
+        # Get full source code
+        full_source = next((c for c in component_chunks if c.get("chunk_type") == "full_source"), None)
+        if full_source:
+            print("\n✅ Full Source Code:")
+            print("=" * 80)
+            print(full_source["text"])
+            print("=" * 80)
+        else:
+            print("\n⚠️  Full source not available, showing code chunks:")
+            code_chunks = [c for c in component_chunks if c.get("chunk_type") == "code"]
+            for chunk in code_chunks:
+                print(chunk["text"])
+        
+        # Get full interface
+        full_interface = next((c for c in component_chunks if c.get("chunk_type") == "full_interface"), None)
+        if full_interface:
+            print("\n✅ Type Definitions:")
+            print("=" * 80)
+            print(full_interface["text"])
+            print("=" * 80)
+        
+        # Get props
+        props_chunk = next((c for c in component_chunks if c.get("chunk_type") == "props"), None)
+        if props_chunk:
+            print("\n📋 Props:")
+            print("-" * 80)
+            print(props_chunk["text"])
+            print("-" * 80)
+            
+    except Exception as e:
+        print(f"Error retrieving component: {e}")
+        import traceback
+        traceback.print_exc()
+
+@app.command()
 def info():
     """Show information about the component database."""
     try:
