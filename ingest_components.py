@@ -36,6 +36,11 @@ class ComponentIngestor:
         file_path = component.get('file', '')
         component_id = component.get('id', '')
         
+        # Skip index.ts/tsx files (they're just re-exports, no real content)
+        if file_path.endswith('/index.ts') or file_path.endswith('/index.tsx'):
+            print(f"   ⏩ Skipping index file: {file_path}")
+            return []
+        
         # Chunk 1: Basic component info
         basic_info_parts = [f"Component: {component_name}"]
         

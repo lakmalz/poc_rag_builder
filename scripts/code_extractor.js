@@ -900,6 +900,17 @@ class RepositoryWideExtractor {
 
     // Main processing loop
     files.forEach((file, index) => {
+      // Skip index.ts and index.tsx files (they're just re-exports)
+      const basename = path.basename(file);
+      if (basename === 'index.ts' || basename === 'index.tsx') {
+        console.log(`\\n⏩ Skipped (${index + 1}/${files.length}): index file - ${path.relative(repoRoot, file)}`);
+        debugInfo.skippedFiles.push({
+          file: path.relative(repoRoot, file),
+          reason: 'index.ts/tsx file (re-export only)'
+        });
+        return;
+      }
+      
       processedFiles++;
       
       try {
