@@ -72,7 +72,20 @@ class ComponentIngestor:
                     "text": props_info
                 })
         
-        # Chunk 3: Code snippet (if exists and meaningful)
+        # NEW: Chunk for FULL SOURCE CODE (unmodified, for LLM usage examples)
+        if component.get('raw'):
+            full_source = component['raw'].strip()
+            if full_source:
+                chunks.append({
+                    "chunk_id": f"{component_id}_full_source",
+                    "component_id": component_id,
+                    "component_name": component_name,
+                    "file": file_path,
+                    "chunk_type": "full_source",
+                    "text": f"{component_name} complete source code:\n```tsx\n{full_source}\n```"
+                })
+        
+        # Chunk 3: Code snippet chunks for search (cleaned/fragmented)
         if component.get('raw'):
             code_chunks = self.process_code_snippet(
                 component['raw'], 
@@ -82,19 +95,30 @@ class ComponentIngestor:
             )
             chunks.extend(code_chunks)
         
-        # Chunk 4: Interface code (if exists)
+        # Chunk 4: Full Interface code (unmodified)
         if component.get('interfaceCode'):
-            interface_code = component['interfaceCode']
-            cleaned_interface_code = self.clean_code_for_search(interface_code)
-            if cleaned_interface_code:
+            interface_code = component['interfaceCode'].strip()
+            if interface_code:
                 chunks.append({
-                    "chunk_id": f"{component_id}_interface",
+                    "chunk_id": f"{component_id}_full_interface",
                     "component_id": component_id,
                     "component_name": component_name,
                     "file": file_path,
-                    "chunk_type": "interface_code",
-                    "text": f"{component_name} interface definition: {cleaned_interface_code}"
+                    "chunk_type": "full_interface",
+                    "text": f"{component_name} complete interface/types:\n```typescript\n{interface_code}\n```"
                 })
+                
+                # Also add cleaned version for search
+                cleaned_interface_code = self.clean_code_for_search(interface_code)
+                if cleaned_interface_code:
+                    chunks.append({
+                        "chunk_id": f"{component_id}_interface",
+                        "component_id": component_id,
+                        "component_name": component_name,
+                        "file": file_path,
+                        "chunk_type": "interface_code",
+                        "text": f"{component_name} interface definition: {cleaned_interface_code}"
+                    })
         return chunks
     
     def format_props_info(self, props: Dict[str, Any], component_name: str) -> str:
