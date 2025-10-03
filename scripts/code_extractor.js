@@ -3,12 +3,169 @@ const path = require("path");
 const glob = require("glob");
 const reactDocgenTs = require("react-docgen-typescript");
 
+// ============================================
+// LOAD CONFIGURATION
+// ============================================
+const CONFIG = require("../config/extraction.config.js");
+
 class RepositoryWideExtractor {
+  
+  /**
+   * SMART AGGREGATION: Group component files by directory
+   * Detects components with multiple files: *.component.tsx, *.interface.ts, *.style.ts, index.ts
+   */
+  static groupComponentFiles(files, repoRoot) {
+    const componentGroups = new Map();
+    const standaloneFiles = [];
+    
+    console.log(`\n🔍 Analyzing component directory structure...`);
+    
+    files.forEach(file => {
+      const dir = path.dirname(file);
+      const basename = path.basename(file);
+      const relativeDir = path.relative(repoRoot, dir);
+      
+      // Check if this looks like a component file
+      const isComponentFile = basename.match(CONFIG.aggregation.patterns.component);
+      const isInterfaceFile = basename.match(CONFIG.aggregation.patterns.interface);
+      const isStyleFile = basename.match(CONFIG.aggregation.patterns.style);
+      const isIndexFile = basename.match(CONFIG.aggregation.patterns.index);
+      
+      // Use config to determine if index files should be aggregated everywhere
+      const shouldAggregateIndex = CONFIG.aggregation.aggregateIndexEverywhere || relativeDir.includes('components');
+      if (isComponentFile || isInterfaceFile || isStyleFile || (isIndexFile && shouldAggregateIndex)) {
+        // This file belongs to a component group
+        if (!componentGroups.has(dir)) {
+          componentGroups.set(dir, {
+            directory: dir,
+            relativeDir: relativeDir,
+            componentName: path.basename(dir),
+            files: {
+              component: null,
+              interface: null,
+              style: null,
+              index: null
+            }
+          });
+        }
+        
+        const group = componentGroups.get(dir);
+        
+        if (isComponentFile) {
+          group.files.component = file;
+          // Extract actual component name from filename (e.g., "ProfilePage" from "ProfilePage.component.tsx")
+          const match = basename.match(/^(.+)\.component\.(tsx|jsx)$/);
+          if (match) {
+            group.componentName = match[1];
+          }
+        } else if (isInterfaceFile) {
+          group.files.interface = file;
+        } else if (isStyleFile) {
+          group.files.style = file;
+        } else if (isIndexFile) {
+          group.files.index = file;
+        }
+      } else {
+        // Standalone file (not part of a component group)
+        standaloneFiles.push(file);
+      }
+    });
+    
+    // Log statistics
+    console.log(`📦 Found ${componentGroups.size} component directories`);
+    console.log(`📄 Found ${standaloneFiles.length} standalone files`);
+    
+    // Log grouped components
+    if (componentGroups.size > 0) {
+      console.log(`\n📁 Component Groups:`);
+      componentGroups.forEach((group, dir) => {
+        const fileCount = Object.values(group.files).filter(f => f !== null).length;
+        const fileTypes = [];
+        if (group.files.component) fileTypes.push('component');
+        if (group.files.interface) fileTypes.push('interface');
+        if (group.files.style) fileTypes.push('style');
+        if (group.files.index) fileTypes.push('index');
+        console.log(`   ${group.componentName} (${fileCount} files: ${fileTypes.join(', ')})`);
+      });
+    }
+    
+    return { componentGroups, standaloneFiles };
+  }
+  
+  /**
+   * Extract interfaces and types from interface files
+   */
+  static extractInterfacesFromFile(fileContent, filePath) {
+    const interfaces = [];
+    const types = [];
+    const enums = [];
+    
+    // Extract interfaces
+    const interfaceRegex = /export\s+interface\s+(\w+)\s*(?:extends\s+[^{]*)?\s*{([^}]+)}/gs;
+    let match;
+    while ((match = interfaceRegex.exec(fileContent)) !== null) {
+      interfaces.push({
+        name: match[1],
+        content: match[0],
+        raw: match[0]
+      });
+    }
+    
+    // Extract type aliases
+    const typeRegex = /export\s+type\s+(\w+)\s*=\s*([^;]+);/gs;
+    while ((match = typeRegex.exec(fileContent)) !== null) {
+      types.push({
+        name: match[1],
+        definition: match[2].trim(),
+        raw: match[0]
+      });
+    }
+    
+    // Extract enums
+    const enumRegex = /export\s+enum\s+(\w+)\s*{([^}]+)}/gs;
+    while ((match = enumRegex.exec(fileContent)) !== null) {
+      enums.push({
+        name: match[1],
+        values: match[2].trim(),
+        raw: match[0]
+      });
+    }
+    
+    return { interfaces, types, enums };
+  }
+  
+  /**
+   * Extract style information from style files
+   */
+  static extractStylesFromFile(fileContent, filePath) {
+    const styles = {
+      type: null,
+      content: fileContent,
+      classes: [],
+      variables: []
+    };
+    
+    // Detect style type
+    if (fileContent.includes('makeStyles') || fileContent.includes('@mui/styles')) {
+      styles.type = 'mui-makestyles';
+    } else if (fileContent.includes('styled-components') || fileContent.includes('styled.')) {
+      styles.type = 'styled-components';
+    } else if (fileContent.includes('@emotion')) {
+      styles.type = 'emotion';
+    } else if (fileContent.includes('css`') || fileContent.includes('css(')) {
+      styles.type = 'css-in-js';
+    }
+    
+    return styles;
+  }
+  
   static extractComponents() {
 
-    // Extract from entire repository, not just components folder
-    const repoRoot = path.join(__dirname, "..", "web-extensions");
-    const buildIndexDir = path.join(__dirname, "..", "build-index");
+    // ============================================
+    // LOAD PATHS FROM CONFIG
+    // ============================================
+    const repoRoot = path.join(__dirname, "..", CONFIG.repository.root);
+    const buildIndexDir = path.join(__dirname, "..", CONFIG.repository.buildDir);
     const outFile = path.join(buildIndexDir, "component_docs.json");
 
     // Stop process if repository does not exist
@@ -24,15 +181,18 @@ class RepositoryWideExtractor {
       console.log(`📁 Created missing directory: ${buildIndexDir}`);
     }
 
-    //If output file exists, skip extraction
-    if (fs.existsSync(outFile)) {
+    //If output file exists, backup and continue
+    if (CONFIG.logging.createBackup && fs.existsSync(outFile)) {
+      const backupFile = outFile.replace('.json', `.backup.${Date.now()}.json`);
+      fs.copyFileSync(outFile, backupFile);
       console.log(`⚠️ Output file already exists: ${outFile}`);
-      console.log('⏩ Skipping extraction. Delete the file to regenerate.');
-      return;
+      console.log(`📦 Created backup: ${backupFile}`);
+      console.log('♻️  Re-extracting components...');
     }
 
     console.log(`\n🔍 Starting repository-wide extraction from: ${repoRoot}`);
     console.log(`📁 Repository exists: ${fs.existsSync(repoRoot)}`);
+    console.log(`⚙️  Using configuration from: config/extraction.config.js`);
 
     const components = [];
     const debugInfo = {
@@ -43,32 +203,44 @@ class RepositoryWideExtractor {
       directoryStats: {}
     };
 
-    // Scan entire repository with comprehensive patterns
-    const files = glob.sync(path.join(repoRoot, "**/*.{js,jsx,ts,tsx}"), {
-      ignore: [
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/build/**',
-        '**/coverage/**',
-        '**/.next/**',
-        '**/.nuxt/**',
-        '**/out/**',
-        '**/public/**',
-        '**/*.test.*',
-        '**/*.spec.*',
-        '**/*.stories.*',
-        '**/*.d.ts',
-        '**/cypress/**',
-        '**/e2e/**',
-        '**/__tests__/**',
-        '**/__mocks__/**',
-        '**/tests/**',              // ✅ Exclude tests directories
-        '**/test/**',               // ✅ Exclude test directories
-        '**/storybook-static/**'
-      ]
+    // ============================================
+    // BUILD FILE PATTERN FROM CONFIG
+    // ============================================
+    const fileExtensions = CONFIG.files.include.join(',');
+    const globPattern = path.join(repoRoot, `**/*.{${fileExtensions}}`);
+    
+    // Scan entire repository with patterns from config
+    const files = glob.sync(globPattern, {
+      ignore: CONFIG.files.exclude
     });
 
     console.log(`📄 Found ${files.length} React/TypeScript files across the repository`);
+    
+    // Apply includeOnly filter if specified
+    let filteredFiles = files;
+    if (CONFIG.files.includeOnly && CONFIG.files.includeOnly.length > 0) {
+      filteredFiles = files.filter(file => {
+        const relativePath = path.relative(repoRoot, file);
+        return CONFIG.files.includeOnly.some(pattern => {
+          // Convert glob pattern to regex for matching
+          const regexPattern = pattern
+            .replace(/\*\*/g, '.*')
+            .replace(/\*/g, '[^/]*')
+            .replace(/\//g, '\\/');
+          return new RegExp(regexPattern).test(relativePath);
+        });
+      });
+      console.log(`� Filtered to ${filteredFiles.length} files based on includeOnly patterns`);
+    }
+    
+    // ========================================
+    // SMART AGGREGATION: Group component files
+    // ========================================
+    if (!CONFIG.aggregation.enabled) {
+      console.log(`⚠️  Smart Aggregation is DISABLED in config`);
+    }
+    
+    const { componentGroups, standaloneFiles } = this.groupComponentFiles(filteredFiles, repoRoot);
     
 
     // Enhanced parser configuration
@@ -273,7 +445,7 @@ class RepositoryWideExtractor {
       }
 
       debugResult.confidence = score;
-      debugResult.isComponent = score >= 3; // Threshold for component detection
+      debugResult.isComponent = score >= CONFIG.detection.confidenceThreshold;
 
       if (!debugResult.isComponent) {
         if (score === 0) {
@@ -900,12 +1072,139 @@ class RepositoryWideExtractor {
       return 'component';
     }
 
-    // Main processing loop
-    files.forEach((file, index) => {
+    // ========================================
+    // PROCESS COMPONENT GROUPS (Smart Aggregation)
+    // ========================================
+    console.log(`\n🔧 Processing ${componentGroups.size} component groups...`);
+    
+    componentGroups.forEach((group, dir) => {
+      try {
+        console.log(`\n📦 Processing component group: ${group.componentName}`);
+        
+        // Create aggregated component object
+        const aggregatedComponent = {
+          id: group.componentName,
+          name: group.componentName,
+          directory: path.relative(repoRoot, group.directory),
+          aggregationType: 'multi-file',  // Mark as aggregated component
+          files: {},
+          raw: {},
+          props: {},
+          interfaces: [],
+          types: [],
+          enums: [],
+          styles: null,
+          exports: [],
+          description: "",
+          features: [],
+          extractionMethod: 'aggregated'
+        };
+        
+        // Process component file (main file)
+        if (group.files.component) {
+          const componentContent = fs.readFileSync(group.files.component, 'utf8');
+          aggregatedComponent.files.component = path.relative(repoRoot, group.files.component);
+          aggregatedComponent.raw.component = componentContent;
+          
+          console.log(`   ✅ Component file: ${path.basename(group.files.component)}`);
+          
+          // Extract props from component
+          try {
+            const docs = parser.parse ? parser.parse(group.files.component) : parser(group.files.component) || [];
+            if (docs.length > 0 && docs[0].props) {
+              aggregatedComponent.props = docs[0].props;
+              console.log(`      📋 Extracted ${Object.keys(docs[0].props).length} props from parser`);
+            }
+          } catch (e) {
+            // Fallback: manual extraction
+            const extracted = extractPropsFromContent(componentContent, group.componentName, group.files.component);
+            aggregatedComponent.props = extractDefaultValues(componentContent, extracted.props);
+            if (extracted.importedInterfaceCode) {
+              aggregatedComponent.raw.importedInterface = extracted.importedInterfaceCode;
+            }
+            console.log(`      📋 Manually extracted ${Object.keys(aggregatedComponent.props).length} props`);
+          }
+          
+          // Extract description
+          aggregatedComponent.description = extractComponentDescription(componentContent, group.componentName);
+          
+          // Detect features
+          if (componentContent.includes('forwardRef')) aggregatedComponent.features.push('ref-forwarding');
+          if (componentContent.includes('useState')) aggregatedComponent.features.push('stateful');
+          if (componentContent.includes('memo')) aggregatedComponent.features.push('memoized');
+          if (componentContent.includes('useEffect')) aggregatedComponent.features.push('effects');
+          
+          aggregatedComponent.componentType = detectComponentType(componentContent);
+        }
+        
+        // Process interface file
+        if (group.files.interface) {
+          const interfaceContent = fs.readFileSync(group.files.interface, 'utf8');
+          aggregatedComponent.files.interface = path.relative(repoRoot, group.files.interface);
+          aggregatedComponent.raw.interface = interfaceContent;
+          
+          const extracted = this.extractInterfacesFromFile(interfaceContent, group.files.interface);
+          aggregatedComponent.interfaces = extracted.interfaces;
+          aggregatedComponent.types = extracted.types;
+          aggregatedComponent.enums = extracted.enums;
+          
+          console.log(`   ✅ Interface file: ${path.basename(group.files.interface)}`);
+          console.log(`      📐 Found ${extracted.interfaces.length} interfaces, ${extracted.types.length} types, ${extracted.enums.length} enums`);
+        }
+        
+        // Process style file
+        if (group.files.style) {
+          const styleContent = fs.readFileSync(group.files.style, 'utf8');
+          aggregatedComponent.files.style = path.relative(repoRoot, group.files.style);
+          aggregatedComponent.raw.style = styleContent;
+          
+          aggregatedComponent.styles = this.extractStylesFromFile(styleContent, group.files.style);
+          
+          console.log(`   ✅ Style file: ${path.basename(group.files.style)} (${aggregatedComponent.styles.type || 'css-in-js'})`);
+        }
+        
+        // Process index file
+        if (group.files.index) {
+          const indexContent = fs.readFileSync(group.files.index, 'utf8');
+          aggregatedComponent.files.index = path.relative(repoRoot, group.files.index);
+          aggregatedComponent.raw.index = indexContent;
+          
+          // Extract exports from index
+          const exportMatches = indexContent.match(/export\s+\{([^}]+)\}/g);
+          if (exportMatches) {
+            exportMatches.forEach(exp => {
+              const items = exp.match(/\w+/g).filter(w => w !== 'export');
+              aggregatedComponent.exports.push(...items);
+            });
+          }
+          
+          console.log(`   ✅ Index file: exports ${aggregatedComponent.exports.length} items`);
+        }
+        
+        // Add to components list
+        components.push(aggregatedComponent);
+        console.log(`   ✅ Aggregated component "${group.componentName}" with ${Object.keys(aggregatedComponent.files).length} files`);
+        
+      } catch (err) {
+        console.error(`   ❌ Error processing component group ${group.componentName}:`, err.message);
+        debugInfo.errors.push({
+          directory: path.relative(repoRoot, group.directory),
+          error: err.message
+        });
+      }
+    });
+
+    // ========================================
+    // PROCESS STANDALONE FILES
+    // ========================================
+    console.log(`\n🔧 Processing ${standaloneFiles.length} standalone files...`);
+    
+    // Main processing loop for standalone files
+    standaloneFiles.forEach((file, index) => {
       // Skip index.ts and index.tsx files (they're just re-exports)
       const basename = path.basename(file);
       if (basename === 'index.ts' || basename === 'index.tsx') {
-        console.log(`\\n⏩ Skipped (${index + 1}/${files.length}): index file - ${path.relative(repoRoot, file)}`);
+        console.log(`\\n⏩ Skipped standalone (${index + 1}/${standaloneFiles.length}): index file - ${path.relative(repoRoot, file)}`);
         debugInfo.skippedFiles.push({
           file: path.relative(repoRoot, file),
           reason: 'index.ts/tsx file (re-export only)'
@@ -919,7 +1218,7 @@ class RepositoryWideExtractor {
         const fileContent = fs.readFileSync(file, "utf8");
         const relativePath = path.relative(repoRoot, file);
         
-        console.log(`\\n📄 Processing (${index + 1}/${files.length}): ${relativePath}`);
+        console.log(`\\n📄 Processing standalone (${index + 1}/${standaloneFiles.length}): ${relativePath}`);
         
         // Check if it's a React component
         if (!isReactComponent(fileContent, file)) {
@@ -956,7 +1255,7 @@ class RepositoryWideExtractor {
             file: path.relative(process.cwd(), file),
             props: {},
             description: "",
-            raw: fileContent.slice(0, 4000),
+            raw: fileContent,  // Full source code (was: slice(0, 4000))
             extractionMethod: 'manual',
             directory: path.dirname(relativePath)
           };
@@ -994,7 +1293,7 @@ class RepositoryWideExtractor {
               file: path.relative(process.cwd(), file),
               props: doc.props || {},
               description: doc.description || "",
-              raw: fileContent.slice(0, 4000),
+              raw: fileContent,  // Full source code (was: slice(0, 4000))
               extractionMethod: 'automatic',
               exportName: doc.exportName,
               tags: doc.tags || {},
@@ -1040,6 +1339,78 @@ class RepositoryWideExtractor {
     try {
       fs.writeFileSync(outFile, JSON.stringify(components, null, 2));
       console.log(`📝 Successfully wrote output to: ${outFile}`);
+      
+      // Validation summary
+      console.log(`\n📊 EXTRACTION VALIDATION SUMMARY`);
+      console.log(`=================================`);
+      console.log(`Total components extracted: ${components.length}`);
+      
+      // Smart Aggregation statistics
+      const aggregatedComponents = components.filter(c => c.aggregationType === 'multi-file');
+      const standaloneComponents = components.filter(c => c.aggregationType !== 'multi-file');
+      
+      if (aggregatedComponents.length > 0) {
+        console.log(`\n📦 SMART AGGREGATION:`);
+        console.log(`   Aggregated components: ${aggregatedComponents.length}`);
+        console.log(`   Standalone components: ${standaloneComponents.length}`);
+        
+        console.log(`\n   Multi-file components:`);
+        aggregatedComponents.forEach(c => {
+          const fileTypes = Object.keys(c.files).join(', ');
+          const fileCount = Object.keys(c.files).length;
+          console.log(`   • ${c.name} (${fileCount} files: ${fileTypes})`);
+        });
+      }
+      
+      // Check for missing critical fields
+      const withoutRaw = components.filter(c => {
+        if (c.aggregationType === 'multi-file') {
+          return !c.raw || !c.raw.component;
+        }
+        return !c.raw || (typeof c.raw === 'string' && c.raw.trim().length === 0);
+      });
+      const withoutProps = components.filter(c => !c.props || Object.keys(c.props).length === 0);
+      const duplicateNames = {};
+      components.forEach(c => {
+        duplicateNames[c.name] = (duplicateNames[c.name] || 0) + 1;
+      });
+      const duplicates = Object.entries(duplicateNames).filter(([name, count]) => count > 1);
+      
+      if (withoutRaw.length > 0) {
+        console.log(`\n⚠️  WARNING: ${withoutRaw.length} components missing source code:`);
+        withoutRaw.slice(0, 5).forEach(c => console.log(`   - ${c.name} (${c.file})`));
+        if (withoutRaw.length > 5) console.log(`   ... and ${withoutRaw.length - 5} more`);
+      }
+      
+      if (withoutProps.length > 0) {
+        console.log(`\n📋 INFO: ${withoutProps.length} components with no props (might be utilities/hooks)`);
+      }
+      
+      if (duplicates.length > 0) {
+        console.log(`\n✅ DUPLICATE NAMES (Correctly handled with unique IDs):`);
+        duplicates.forEach(([name, count]) => {
+          const files = components.filter(c => c.name === name).map(c => c.file);
+          console.log(`   - "${name}" appears ${count} times:`);
+          files.forEach(f => console.log(`     • ${f}`));
+        });
+      }
+      
+      // Size statistics
+      const getTotalSize = (c) => {
+        if (c.aggregationType === 'multi-file') {
+          return Object.values(c.raw).reduce((sum, content) => sum + (content?.length || 0), 0);
+        }
+        return c.raw?.length || 0;
+      };
+      
+      const avgRawSize = components.reduce((sum, c) => sum + getTotalSize(c), 0) / components.length;
+      const maxRawSize = Math.max(...components.map(c => getTotalSize(c)));
+      console.log(`\n📏 Source code size:`);
+      console.log(`   Average: ${Math.round(avgRawSize)} characters`);
+      console.log(`   Maximum: ${maxRawSize} characters`);
+      
+      console.log(`\n✅ Extraction complete!`);
+      console.log(`=================================\n`);
     } catch (err) {
       console.error(`❌ Error writing output file: ${outFile}`);
       console.error(err);

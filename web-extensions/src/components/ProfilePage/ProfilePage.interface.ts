@@ -12,6 +12,7 @@ interface ButtonSettings {
   variant?: ButtonVariant;
   color?: ButtonColor;
   disabled?: boolean;
+  action?: () => void;
 }
 
 export interface UserProfile {

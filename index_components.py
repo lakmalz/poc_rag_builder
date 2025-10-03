@@ -107,22 +107,41 @@ class ComponentIndexer:
         # Add documents to collection in batches
         print(f"Adding {len(texts)} documents to ChromaDB...")
         
+        added_count = 0
         for i in range(0, len(texts), batch_size):
             batch_end = min(i + batch_size, len(texts))
             batch_texts = texts[i:batch_end]
             batch_metadatas = metadatas[i:batch_end]
             batch_ids = ids[i:batch_end]
             
-            collection.add(
-                documents=batch_texts,
-                metadatas=batch_metadatas,
-                ids=batch_ids
-            )
-            
-            print(f"Added batch {i//batch_size + 1}/{(len(texts) + batch_size - 1)//batch_size}")
+            try:
+                collection.add(
+                    documents=batch_texts,
+                    metadatas=batch_metadatas,
+                    ids=batch_ids
+                )
+                added_count += len(batch_ids)
+                print(f"✅ Added batch {i//batch_size + 1}/{(len(texts) + batch_size - 1)//batch_size} ({added_count}/{len(texts)} chunks)")
+            except Exception as e:
+                print(f"❌ Error adding batch {i//batch_size + 1}: {e}")
+                raise
         
-        print(f"Saved ChromaDB index to {self.CHROMA_DB_PATH}")
-        print(f"Collection '{self.collection_name}' contains {collection.count()} documents")
+        # Validation: Verify all chunks are in ChromaDB
+        actual_count = collection.count()
+        print(f"\n{'='*60}")
+        print(f"📊 INDEXING VALIDATION SUMMARY")
+        print(f"{'='*60}")
+        print(f"Expected chunks: {len(texts)}")
+        print(f"Actually stored: {actual_count}")
+        
+        if actual_count == len(texts):
+            print(f"✅ SUCCESS: All chunks stored correctly!")
+        else:
+            print(f"⚠️  WARNING: Mismatch! Missing {len(texts) - actual_count} chunks")
+        
+        print(f"\n📁 ChromaDB location: {self.CHROMA_DB_PATH}")
+        print(f"📦 Collection name: {self.collection_name}")
+        print(f"{'='*60}\n")
     
     @staticmethod
     def build_index_static(model_name="all-MiniLM-L6-v2", batch_size=64):
@@ -131,7 +150,8 @@ class ComponentIndexer:
         if not chunks_file.exists():
             print(f"Chunks file not found: {chunks_file}")
             print("Running chunk creation...")
-            chunker = ComponentChunker()
+            from ingest_components import ComponentIngestor
+            chunker = ComponentIngestor()
             chunker.create_chunks()
             print(f"Created chunks file: {chunks_file}")
         

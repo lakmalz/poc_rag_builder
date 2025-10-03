@@ -29,17 +29,163 @@ class ComponentIngestor:
         
         return text.strip()
 
+    def extract_aggregated_component_chunks(self, component: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract chunks from aggregated multi-file component"""
+        chunks = []
+        component_name = component.get('name', 'Unknown')
+        component_id = component.get('id', component_name)
+        directory = component.get('directory', '')
+        raw_files = component.get('raw', {})
+        
+        # Chunk 1: Complete aggregated component (ALL files together)
+        all_code_parts = []
+        
+        if raw_files.get('component'):
+            all_code_parts.append(f"COMPONENT ({component_name}.component.tsx):\n```tsx\n{raw_files['component']}\n```")
+        
+        if raw_files.get('interface'):
+            all_code_parts.append(f"\nINTERFACES & TYPES ({component_name}.interface.ts):\n```typescript\n{raw_files['interface']}\n```")
+        
+        if raw_files.get('style'):
+            all_code_parts.append(f"\nSTYLES ({component_name}.style.ts):\n```typescript\n{raw_files['style']}\n```")
+        
+        if raw_files.get('index'):
+            all_code_parts.append(f"\nEXPORTS (index.ts):\n```typescript\n{raw_files['index']}\n```")
+        
+        # Create comprehensive chunk with ALL related code
+        chunks.append({
+            "chunk_id": f"{component_id}_complete",
+            "component_id": component_id,
+            "component_name": component_name,
+            "directory": directory,
+            "chunk_type": "complete_component",
+            "text": f"{component_name} complete component with all files:\n\n" + "\n\n".join(all_code_parts)
+        })
+        
+        # Chunk 2: Basic info
+        basic_info_parts = [f"Component: {component_name}"]
+        
+        if component.get('description'):
+            desc = self.clean_text(component['description'])
+            if desc:
+                basic_info_parts.append(f"Description: {desc}")
+        
+        if directory:
+            basic_info_parts.append(f"Location: {directory}")
+        
+        file_types = list(component.get('files', {}).keys())
+        if file_types:
+            basic_info_parts.append(f"Files: {', '.join(file_types)}")
+        
+        chunks.append({
+            "chunk_id": f"{component_id}_basic",
+            "component_id": component_id,
+            "component_name": component_name,
+            "directory": directory,
+            "chunk_type": "basic_info",
+            "text": " | ".join(basic_info_parts)
+        })
+        
+        # Chunk 3: Props information
+        if component.get('props') and isinstance(component['props'], dict):
+            props_info = self.format_props_info(component['props'], component_name)
+            if props_info:
+                chunks.append({
+                    "chunk_id": f"{component_id}_props",
+                    "component_id": component_id,
+                    "component_name": component_name,
+                    "directory": directory,
+                    "chunk_type": "props",
+                    "text": props_info
+                })
+        
+        # Chunk 4: Component source only (for focused component code search)
+        if raw_files.get('component'):
+            chunks.append({
+                "chunk_id": f"{component_id}_component_source",
+                "component_id": component_id,
+                "component_name": component_name,
+                "directory": directory,
+                "chunk_type": "component_source",
+                "text": f"{component_name} component implementation:\n```tsx\n{raw_files['component']}\n```"
+            })
+        
+        # Chunk 5: Interfaces & Types (for type search)
+        if raw_files.get('interface'):
+            interfaces = component.get('interfaces', [])
+            types = component.get('types', [])
+            enums = component.get('enums', [])
+            
+            type_summary_parts = [f"{component_name} type definitions:"]
+            if interfaces:
+                type_summary_parts.append(f"Interfaces: {', '.join([i['name'] for i in interfaces])}")
+            if types:
+                type_summary_parts.append(f"Types: {', '.join([t['name'] for t in types])}")
+            if enums:
+                type_summary_parts.append(f"Enums: {', '.join([e['name'] for e in enums])}")
+            
+            chunks.append({
+                "chunk_id": f"{component_id}_interfaces",
+                "component_id": component_id,
+                "component_name": component_name,
+                "directory": directory,
+                "chunk_type": "interfaces",
+                "text": " | ".join(type_summary_parts) + f"\n\n```typescript\n{raw_files['interface']}\n```"
+            })
+        
+        # Chunk 6: Styles (for style search)
+        if raw_files.get('style'):
+            style_info = component.get('styles', {})
+            style_type = style_info.get('type', 'css-in-js') if isinstance(style_info, dict) else 'css-in-js'
+            
+            chunks.append({
+                "chunk_id": f"{component_id}_styles",
+                "component_id": component_id,
+                "component_name": component_name,
+                "directory": directory,
+                "chunk_type": "styles",
+                "text": f"{component_name} styles ({style_type}):\n```typescript\n{raw_files['style']}\n```"
+            })
+        
+        # Chunk 7: Searchable code snippets (cleaned versions)
+        if raw_files.get('component'):
+            code_chunks = self.process_code_snippet(
+                raw_files['component'], 
+                component_id, 
+                component_name,
+                f"{directory}/{component_name}.component.tsx"
+            )
+            chunks.extend(code_chunks)
+        
+        print(f"      Created {len(chunks)} chunks (complete + individual parts)")
+        return chunks
+
     def extract_component_chunks(self, component: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Extract meaningful chunks from a single component"""
         chunks = []
         component_name = component.get('name', 'Unknown')
-        file_path = component.get('file', '')
         component_id = component.get('id', '')
+        aggregation_type = component.get('aggregationType', 'single-file')
         
-        # Skip index.ts/tsx files (they're just re-exports, no real content)
+        # Handle aggregated multi-file components
+        if aggregation_type == 'multi-file':
+            print(f"   📦 Processing aggregated component: {component_name}")
+            return self.extract_aggregated_component_chunks(component)
+        
+        # Handle single-file components (existing logic)
+        file_path = component.get('file', '')
+        
+        # Check index.ts/tsx files - skip only if they're simple re-exports
         if file_path.endswith('/index.ts') or file_path.endswith('/index.tsx'):
-            print(f"   ⏩ Skipping index file: {file_path}")
-            return []
+            # Check if this index file has actual component code (not just re-exports)
+            has_code = component.get('raw') and len(component.get('raw', '').strip()) > 100
+            has_props = component.get('props') and len(component.get('props', {})) > 0
+            
+            if not has_code and not has_props:
+                print(f"   ⏩ Skipping re-export index file: {file_path}")
+                return []
+            else:
+                print(f"   ✅ Including index file with component code: {file_path}")
         
         # Chunk 1: Basic component info
         basic_info_parts = [f"Component: {component_name}"]
@@ -311,17 +457,35 @@ class ComponentIngestor:
             print(f"Processing first {len(components)} components for testing")
 
         all_chunks = []
+        components_processed = []
+        components_skipped = []
 
         for i, component in enumerate(components):
             try:
+                component_name = component.get('name', 'Unknown')
                 component_chunks = self.extract_component_chunks(component)
-                all_chunks.extend(component_chunks)
+                
+                if component_chunks:
+                    all_chunks.extend(component_chunks)
+                    components_processed.append(component_name)
+                else:
+                    components_skipped.append({
+                        'name': component_name,
+                        'file': component.get('file', ''),
+                        'reason': 'No chunks generated'
+                    })
 
                 if (i + 1) % 10 == 0:
-                    print(f"Processed {i + 1} components, generated {len(all_chunks)} chunks so far")
+                    print(f"Processed {i + 1}/{len(components)} components, generated {len(all_chunks)} chunks so far")
 
             except Exception as e:
-                print(f"Error processing component {component.get('name', 'unknown')}: {e}")
+                component_name = component.get('name', 'unknown')
+                print(f"Error processing component {component_name}: {e}")
+                components_skipped.append({
+                    'name': component_name,
+                    'file': component.get('file', ''),
+                    'reason': str(e)
+                })
                 continue
 
         # Create output directory if it doesn't exist
@@ -331,8 +495,21 @@ class ComponentIngestor:
         with open(self.output_path, 'w', encoding='utf-8') as f:
             json.dump(all_chunks, f, indent=2, ensure_ascii=False)
 
-        print(f"Created {len(all_chunks)} chunks from {len(components)} components")
-        print(f"Output saved to: {self.output_path}")
+        print(f"\n{'='*60}")
+        print(f"📊 CHUNKING VALIDATION SUMMARY")
+        print(f"{'='*60}")
+        print(f"✅ Components processed: {len(components_processed)}/{len(components)}")
+        print(f"📦 Total chunks created: {len(all_chunks)}")
+        
+        if components_skipped:
+            print(f"\n⚠️  WARNING: {len(components_skipped)} components skipped:")
+            for skip_info in components_skipped[:5]:
+                print(f"   - {skip_info['name']} ({skip_info['file']})")
+                print(f"     Reason: {skip_info['reason']}")
+            if len(components_skipped) > 5:
+                print(f"   ... and {len(components_skipped) - 5} more")
+        
+        print(f"\n📁 Output saved to: {self.output_path}")
 
         # Print statistics
         chunk_types = {}
@@ -340,9 +517,21 @@ class ComponentIngestor:
             chunk_type = chunk.get('chunk_type', 'unknown')
             chunk_types[chunk_type] = chunk_types.get(chunk_type, 0) + 1
 
-        print("\nChunk types created:")
-        for chunk_type, count in chunk_types.items():
-            print(f"  {chunk_type}: {count}")
+        print(f"\n📊 Chunk types distribution:")
+        for chunk_type, count in sorted(chunk_types.items()):
+            print(f"   {chunk_type:20s}: {count:4d} chunks")
+        
+        # Component-level statistics
+        from collections import Counter
+        component_chunk_counts = Counter([c['component_name'] for c in all_chunks])
+        avg_chunks_per_component = len(all_chunks) / len(components_processed) if components_processed else 0
+        max_chunks = max(component_chunk_counts.values()) if component_chunk_counts else 0
+        max_chunk_component = max(component_chunk_counts, key=component_chunk_counts.get) if component_chunk_counts else "None"
+        
+        print(f"\n📈 Per-component statistics:")
+        print(f"   Average chunks per component: {avg_chunks_per_component:.1f}")
+        print(f"   Max chunks in one component: {max_chunks} ({max_chunk_component})")
+        print(f"{'='*60}\n")
 
 
 def main():
