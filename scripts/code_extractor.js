@@ -62,6 +62,8 @@ class RepositoryWideExtractor {
         '**/e2e/**',
         '**/__tests__/**',
         '**/__mocks__/**',
+        '**/tests/**',              // ✅ Exclude tests directories
+        '**/test/**',               // ✅ Exclude test directories
         '**/storybook-static/**'
       ]
     });

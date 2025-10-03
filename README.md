@@ -79,3 +79,25 @@ put into (tsconfig.json)
      ],
 
  "exclude": ["node_modules"]
+
+
+ ## AI Assistant Guidelines
+- No automatic .md file creation
+- Ask before creating new files
+
+## Should have to keep this extensions in the `tsconfig.json`
+     "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.interface.js", "**/*.interface.ts", "**/*.style.ts", ".next/types/**/*.ts","src/types/*",],
+     "exclude": [
+          "node_modules",
+          "tests",
+          "test",
+          "__tests__",
+          "**/*.test.ts",
+          "**/*.test.tsx",
+          "**/*.spec.ts",
+          "**/*.spec.tsx",
+          "dist",
+          "build",
+          ".next",
+          "out",
+          "coverage"
