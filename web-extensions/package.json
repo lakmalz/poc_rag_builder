@@ -1,0 +1,43 @@
+{
+  "name": "temp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "uno:dev": "unocss \"./**/*.tsx\" --watch",
+    "uno:build": "unocss \"./**/*.tsx\"",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@floating-ui/react": "^0.24.8",
+    "@react-spring/web": "^9.7.5",
+    "@types/node": "20.0.0",
+    "@types/react": "19.0.2",
+    "@types/react-dom": "19.0.2",
+    "clsx": "^1.2.1",
+    "lodash-es": "^4.17.21",
+    "next": "15.1.2",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-hook-form": "^7.51.3",
+    "react-use-clipboard": "^1.0.9",
+    "recoil": "^0.7.7",
+    "recoil-nexus": "^0.4.0",
+    "typescript": "5.0.4",
+    "zustand": "^4.3.8"
+  },
+  "devDependencies": {
+    "@types/lodash-es": "^4.17.7",
+    "@unocss/cli": "^0.51.8",
+    "@unocss/postcss": "^0.51.12",
+    "unocss": "^0.51.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.0.2",
+      "@types/react-dom": "19.0.2"
+    }
+  }
+}

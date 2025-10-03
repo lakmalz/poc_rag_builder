@@ -1,0 +1,5 @@
+@unocss all;
+
+body {
+  @apply bg-[#F7F7F7];
+}
