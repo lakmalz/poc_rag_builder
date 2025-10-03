@@ -1,3 +1,4 @@
 # .github/copilot-instructions.md
 - Do not create documentation files (.md) unless explicitly requested
-- Ask before creating any new files
+<!-- - Provide explanations inline in responses
+- Ask before creating any new files -->
