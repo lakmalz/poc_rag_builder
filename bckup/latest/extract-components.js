@@ -5,7 +5,7 @@ const reactDocgenTs = require("react-docgen-typescript");
 
 class ComponentExtractor {
   static extractComponents() {
-    const repoPath = path.join(__dirname, "..", "Custom-ui", "src", "components");
+    const repoPath = path.join(__dirname, "..", "web-extensions", "src", "components");
       const outFile = path.join(__dirname, "..", "build-index", "component_docs.json");
       if (fs.existsSync(outFile)) {
         console.log(`Component docs already exist at ${outFile}, skipping extraction.`);
@@ -17,7 +17,7 @@ class ComponentExtractor {
     const files = glob.sync(path.join(repoPath, "**/*.{js,jsx,ts,tsx}"));
 
     // Use custom config to support tsconfig paths and better TypeScript support
-    const parser = reactDocgenTs.withCustomConfig(path.join(__dirname, "..", "Custom-ui", "tsconfig.json"), {
+    const parser = reactDocgenTs.withCustomConfig(path.join(__dirname, "..", "web-extensions", "tsconfig.json"), {
       savePropValueAsString: true,
     });
 

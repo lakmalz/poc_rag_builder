@@ -51,13 +51,13 @@ Found 2 component(s):
 [
   {
     "name": "Page",
-    "file": "Custom-ui/src/app/tab/page.tsx",
-    "component_id": "Page_Custom-ui/src/app/tab/page.tsx"
+    "file": "web-extensions/src/app/tab/page.tsx",
+    "component_id": "Page_web-extensions/src/app/tab/page.tsx"
   },
   {
     "name": "ProfilePage.component",
-    "file": "Custom-ui/src/components/ProfilePage/ProfilePage.component.tsx",
-    "component_id": "ProfilePage.component_Custom-ui/src/components/ProfilePage/ProfilePage.component.tsx"
+    "file": "web-extensions/src/components/ProfilePage/ProfilePage.component.tsx",
+    "component_id": "ProfilePage.component_web-extensions/src/components/ProfilePage/ProfilePage.component.tsx"
   }
 ]
 ```
@@ -91,7 +91,7 @@ python3 query_cli.py get-component-exact "ProfilePage.component"
 **Output**:
 ```
 📦 Component: ProfilePage.component
-📁 File: Custom-ui/src/components/ProfilePage/ProfilePage.component.tsx
+📁 File: web-extensions/src/components/ProfilePage/ProfilePage.component.tsx
 
 ✅ Full Source Code:
 ================================================================================
@@ -159,7 +159,7 @@ Select a component by number (or 's' for semantic search): 2
 🔎 Retrieving exact match for: ProfilePage.component
 
 📦 Component: ProfilePage.component
-📁 File: Custom-ui/src/components/ProfilePage/ProfilePage.component.tsx
+📁 File: web-extensions/src/components/ProfilePage/ProfilePage.component.tsx
 
 ✅ Full Source Code:
 [... full component code ...]

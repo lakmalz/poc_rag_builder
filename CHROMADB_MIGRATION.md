@@ -111,7 +111,7 @@ Found 2 component(s):
 # Test 3: Get exact component
 $ python3 query_cli.py get-component-exact "Page"
 📦 Component: Page
-📁 File: Custom-ui/src/app/page.tsx
+📁 File: web-extensions/src/app/page.tsx
 ✅ Full Source Code:
 [... complete source code ...]
 ✅ PASS

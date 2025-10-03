@@ -112,7 +112,7 @@ $ python3 -c "from query_cli import get_components_data; cm, rc = get_components
 $ python3 -c "from query_cli import get_component_exact; print(get_component_exact('ProfilePage.component', return_string=True)[:200])"
 
 📦 Component: ProfilePage.component
-📁 File: Custom-ui/src/components/ProfilePage/ProfilePage.component.tsx
+📁 File: web-extensions/src/components/ProfilePage/ProfilePage.component.tsx
 
 ✅ Full Source Code:
 =====================================...
@@ -134,7 +134,7 @@ Select a component by number (or 's' for semantic search):
 🔎 Retrieving exact match for: ProfilePage.component
 
 📦 Component: ProfilePage.component
-📁 File: Custom-ui/src/components/ProfilePage/ProfilePage.component.tsx
+📁 File: web-extensions/src/components/ProfilePage/ProfilePage.component.tsx
 
 ✅ Full Source Code:
 [Complete ProfilePage.component source code - 3785 chars]

@@ -5,9 +5,9 @@ const reactDocgenTs = require("react-docgen-typescript");
 
 // Configuration
 const config = {
-  srcDir: "./Custom-ui/src",
+  srcDir: "./web-extensions/src",
   outputFile: "./component_doc.json",
-  projectName: "Custom-ui",
+  projectName: "web-extensions",
   componentPattern: {
     // Your specific pattern: ComponentName.component.tsx
     component: "**/*.component.tsx",

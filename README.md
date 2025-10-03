@@ -1,5 +1,5 @@
-# GIT custom-ui repo
-# https://github.com/Ricy137/Custom-ui/tree/main
+# GIT web-extensions repo
+# https://github.com/Ricy137/web-extensions/tree/main
 
 # Packages (REACT)
 # npm init -y

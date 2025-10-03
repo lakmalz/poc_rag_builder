@@ -7,7 +7,7 @@ class RepositoryWideExtractor {
   static extractComponents() {
 
     // Extract from entire repository, not just components folder
-    const repoRoot = path.join(__dirname, "..", "Custom-ui");
+    const repoRoot = path.join(__dirname, "..", "web-extensions");
     const buildIndexDir = path.join(__dirname, "..", "build-index");
     const outFile = path.join(buildIndexDir, "component_docs.json");
 
