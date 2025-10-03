@@ -1,5 +1,10 @@
 import os
 import subprocess
+import sys
+
+# Import query_cli functions
+sys.path.insert(0, os.path.dirname(__file__))
+from query_cli import list_components, get_component_exact, get_components_data, queryer
 
 # Paths
 component_doc_path = os.path.join("build-index", "component_docs.json")
@@ -52,101 +57,66 @@ def prompt_indexing():
         print("Skipping indexing.")
         return False
 
-# Step 4: Query prompt
-def is_real_component(name, chunk_data):
-    """
-    Filter to identify real React components vs utilities/hooks/helpers.
-    Returns True if it's a displayable component, False otherwise.
-    """
-    if not name:
-        return False
-    
-    # Skip generic/unnamed exports
-    if name in ['default', '__function', 'unknown', 'Unknown']:
-        return False
-    
-    # Skip utility files (common patterns)
-    utility_patterns = ['Utils', 'Helper', 'util', 'helper', 'Util']
-    if any(pattern in name for pattern in utility_patterns):
-        return False
-    
-    # Skip custom hooks (start with 'use' or 'Use')
-    if name.startswith('use') or name.startswith('Use'):
-        return False
-    
-    # Skip render utilities
-    if name.startswith('render') or name.startswith('Render'):
-        return False
-    
-    # Skip if file is in utils/helpers directory
-    file_path = chunk_data.get('file', '').lower()
-    if '/utils/' in file_path or '/helpers/' in file_path:
-        return False
-    
-    # Must start with uppercase (component convention)
-    if not name[0].isupper():
-        return False
-    
-    return True
-
+# Step 4: Query prompt using integrated functions
 def prompt_query():
-    # If all files/dirs exist, list components and let user choose
+    """
+    Interactive component query using integrated query_cli functions.
+    Returns component list and details as strings.
+    """
     chromadb_dir = os.path.join("build-index", "chromadb")
     if os.path.exists(component_doc_path) and os.path.exists(component_chunk_path) and os.path.exists(chromadb_dir):
-        print("\nAll data available. Listing components:")
-        import json
-        with open(component_chunk_path, "r", encoding="utf-8") as f:
-            chunks = json.load(f)
-        
-        # Get unique component names and their metadata
-        component_map = {}
-        for chunk in chunks:
-            name = chunk.get("component_name")
-            if name and chunk.get("chunk_type") == "basic_info":
-                component_map[name] = chunk
-        
-        # Filter to only real components
-        real_components = [
-            name for name in component_map.keys() 
-            if is_real_component(name, component_map[name])
-        ]
-        
-        # Sort alphabetically
-        real_components.sort()
-        
-        if not real_components:
-            print("No components found.")
-            return
-        
-        print(f"\nFound {len(real_components)} component(s):\n")
-        for idx, name in enumerate(real_components):
-            # Get file path for display
-            file_path = component_map[name].get('file', '')
-            file_display = '/'.join(file_path.split('/')[-3:]) if file_path else ''
-            print(f"[{idx+1}] {name:30s} ({file_display})")
-        
-        choice = input("\nSelect a component by number (or 's' for semantic search): ").strip()
-        
-        # Check if user wants semantic search
-        if choice.lower() == 's':
-            question = input("\nEnter your search query: ").strip()
-            print("\n🔎 Searching semantically, please wait...")
-            subprocess.run(["python3", "query_cli.py", "query-find-component", question, "--k", "5", "--per-component", "10"])
-            return
+        print("\nAll data available. Starting interactive component query...")
         
         try:
-            idx = int(choice) - 1
-            if idx < 0 or idx >= len(real_components):
-                print("Invalid selection.")
+            # Get component list from ChromaDB (as string)
+            components_str = list_components(output_format="list", return_string=True)
+            print(components_str)
+            
+            # Get component data for selection
+            component_map, real_components = get_components_data()
+            
+            if not real_components:
+                print("No components found.")
                 return
-            selected_name = real_components[idx]
-            print(f"\n🔎 Retrieving exact match for: {selected_name}\n")
-            subprocess.run(["python3", "query_cli.py", "get-component-exact", selected_name])
-        except ValueError:
-            print("Invalid input. Please enter a number or 's' for search.")
+            
+            # Get user selection
+            choice = input("\nSelect a component by number (or 's' for semantic search): ").strip()
+            
+            # Check if user wants semantic search
+            if choice.lower() == 's':
+                question = input("\nEnter your search query: ").strip()
+                print("\n🔎 Searching semantically, please wait...")
+                subprocess.run(["python3", "query_cli.py", "query-find-component", question, "--k", "5", "--per-component", "10"])
+                return
+            
+            # Get exact component by selection
+            try:
+                idx = int(choice) - 1
+                if idx < 0 or idx >= len(real_components):
+                    print("Invalid selection.")
+                    return
+                
+                selected_name = real_components[idx]
+                print(f"\n🔎 Retrieving exact match for: {selected_name}\n")
+                
+                # Get component details as string
+                component_details = get_component_exact(selected_name, return_string=True)
+                print(component_details)
+                
+            except ValueError:
+                print("Invalid input. Please enter a number or 's' for search.")
+            except Exception as e:
+                print(f"Error: {e}")
+                import traceback
+                traceback.print_exc()
+                
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error in query: {e}")
+            import traceback
+            traceback.print_exc()
+        
         return
+    
     # Otherwise, prompt for freeform question
     question = input("\nPlease enter your question: ")
     print("\n🔎 Processing your query, please wait...")

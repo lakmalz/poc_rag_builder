@@ -262,31 +262,39 @@ def query_find_component(q: str, k: int = 5, per_component: int = 1):
 def get_rag_context_for_components(results):
     """
     Given a list of component search results, aggregate code, props, and interface_code chunks for LLM context.
+    Retrieves full source and interface from ChromaDB (not JSON file).
     """
     rag_texts = []
     try:
-        import json
-        from pathlib import Path
-        chunks_path = Path("build-index/component_chunks.json")
-        all_chunks = []
-        if chunks_path.exists():
-            with open(chunks_path, "r", encoding="utf-8") as f:
-                all_chunks = json.load(f)
+        # Get ChromaDB collection
+        collection = queryer._get_collection()
     except Exception as e:
-        print(f"[Warning] Could not load all chunks: {e}")
+        print(f"[Warning] Could not access ChromaDB: {e}")
+        collection = None
 
     for r in results:
         print(f"\nComponent: {r['component_name']}  (score: {r['best_score']:.4f})")
         print("File:", r['file'])
         
-        # First, try to find full source code for this component
+        # First, try to find full source code for this component from ChromaDB
         full_source_found = False
-        for chunk in all_chunks:
-            if chunk.get("component_id") == r["component_id"] and chunk.get("chunk_type") == "full_source":
-                print("   [Using full source code]")
-                rag_texts.append(chunk["text"])
-                full_source_found = True
-                break
+        if collection:
+            try:
+                full_source_results = collection.get(
+                    where={
+                        "$and": [
+                            {"component_id": r["component_id"]},
+                            {"chunk_type": "full_source"}
+                        ]
+                    },
+                    include=["documents"]
+                )
+                if full_source_results['documents']:
+                    print("   [Using full source code from ChromaDB]")
+                    rag_texts.append(full_source_results['documents'][0])
+                    full_source_found = True
+            except Exception as e:
+                print(f"   [Warning] Could not retrieve full source: {e}")
         
         # If no full source, use the top chunks from search results
         if not full_source_found:
@@ -294,12 +302,24 @@ def get_rag_context_for_components(results):
                 snippet = c["text"][:800].strip()
                 rag_texts.append(snippet)
         
-        # Always add full interface if available
-        for chunk in all_chunks:
-            if chunk.get("component_id") == r["component_id"] and chunk.get("chunk_type") == "full_interface":
-                print("   [Using full interface]")
-                rag_texts.append(chunk["text"])
-                break
+        # Always add full interface if available from ChromaDB
+        if collection:
+            try:
+                full_interface_results = collection.get(
+                    where={
+                        "$and": [
+                            {"component_id": r["component_id"]},
+                            {"chunk_type": "full_interface"}
+                        ]
+                    },
+                    include=["documents"]
+                )
+                if full_interface_results['documents']:
+                    print("   [Using full interface from ChromaDB]")
+                    rag_texts.append(full_interface_results['documents'][0])
+            except Exception as e:
+                print(f"   [Warning] Could not retrieve full interface: {e}")
+                
     return rag_texts
 
 def get_message_content(json_data: str) -> str:
@@ -364,74 +384,374 @@ def extract_code_snippet(content):
     return snippets
 
 
-@app.command()
-def get_component_exact(component_name: str):
+def is_real_component(name: str, chunk_data: dict) -> bool:
     """
-    Retrieve a specific component by exact name match (not semantic search).
+    Filter to identify real React components vs utilities/hooks/helpers.
+    Returns True if it's a displayable component, False otherwise.
+    """
+    if not name:
+        return False
+    
+    # Skip generic/unnamed exports
+    if name in ['default', '__function', 'unknown', 'Unknown']:
+        return False
+    
+    # Skip utility files (common patterns)
+    utility_patterns = ['Utils', 'Helper', 'util', 'helper', 'Util']
+    if any(pattern in name for pattern in utility_patterns):
+        return False
+    
+    # Skip custom hooks (start with 'use' or 'Use')
+    if name.startswith('use') or name.startswith('Use'):
+        return False
+    
+    # Skip render utilities
+    if name.startswith('render') or name.startswith('Render'):
+        return False
+    
+    # Skip if file is in utils/helpers directory
+    file_path = chunk_data.get('file', '').lower()
+    if '/utils/' in file_path or '/helpers/' in file_path:
+        return False
+    
+    # Must start with uppercase (component convention)
+    if not name[0].isupper():
+        return False
+    
+    return True
+
+def get_components_data():
+    """
+    Helper function to get component data from ChromaDB.
+    Returns: (component_map, real_components_list)
+    """
+    import json
+    
+    # Get data from ChromaDB
+    collection = queryer._get_collection()
+    
+    # Get all basic_info chunks from ChromaDB
+    all_data = collection.get(
+        where={"chunk_type": "basic_info"},
+        include=["metadatas"]
+    )
+    
+    # Get unique component names and their metadata
+    component_map = {}
+    for metadata in all_data['metadatas']:
+        name = metadata.get("component_name")
+        if name:
+            component_map[name] = metadata
+    
+    # Filter to only real components
+    real_components = [
+        name for name in component_map.keys() 
+        if is_real_component(name, component_map[name])
+    ]
+    
+    # Sort alphabetically
+    real_components.sort()
+    
+    return component_map, real_components
+
+@app.command()
+def list_components(output_format: str = "list", return_string: bool = False):
+    """
+    List all available React components (filtered to exclude utils/hooks).
+    Retrieves data from ChromaDB (not JSON file).
     
     Args:
-        component_name: Exact name of the component to retrieve
+        output_format: Output format - 'list' (default), 'json', or 'names'
+        return_string: If True, return string instead of printing
+    
+    Returns:
+        String representation or prints component list
     """
     try:
         import json
-        from pathlib import Path
-        chunks_path = Path("build-index/component_chunks.json")
         
-        if not chunks_path.exists():
-            print("Error: component_chunks.json not found. Run the pipeline first.")
+        component_map, real_components = get_components_data()
+        
+        if not real_components:
+            msg = "No components found."
+            if return_string:
+                return msg
+            print(msg)
+            return []
+        
+        # Build output string
+        output_lines = []
+        
+        if output_format == "json":
+            component_data = [
+                {
+                    "name": name,
+                    "file": component_map[name].get('file', ''),
+                    "component_id": component_map[name].get('component_id', '')
+                }
+                for name in real_components
+            ]
+            output_str = json.dumps(component_data, indent=2)
+            if return_string:
+                return output_str
+            print(output_str)
+            return component_data
+            
+        elif output_format == "names":
+            output_str = "\n".join(real_components)
+            if return_string:
+                return output_str
+            print(output_str)
+            return real_components
+            
+        else:  # list format (default)
+            output_lines.append(f"\nFound {len(real_components)} component(s):\n")
+            for idx, name in enumerate(real_components):
+                file_path = component_map[name].get('file', '')
+                file_display = '/'.join(file_path.split('/')[-3:]) if file_path else ''
+                output_lines.append(f"[{idx+1}] {name:30s} ({file_display})")
+            
+            output_str = "\n".join(output_lines)
+            if return_string:
+                return output_str
+            print(output_str)
+            return real_components
+            
+    except Exception as e:
+        error_msg = f"Error listing components: {e}"
+        if return_string:
+            return error_msg
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
+        return []
+
+@app.command()
+def get_component_exact(component_name: str, return_string: bool = False):
+    """
+    Retrieve a specific component by exact name match (not semantic search).
+    Retrieves data from ChromaDB (not JSON file).
+    
+    Args:
+        component_name: Exact name of the component to retrieve
+        return_string: If True, return string instead of printing
+    
+    Returns:
+        String representation of component details
+    """
+    try:
+        import json
+        
+        # Get data from ChromaDB instead of JSON file
+        collection = queryer._get_collection()
+        
+        # Query ChromaDB for this specific component
+        results = collection.get(
+            where={"component_name": component_name},
+            include=["metadatas", "documents"]
+        )
+        
+        if not results['ids']:
+            msg = f"No component found with exact name: {component_name}"
+            if return_string:
+                return msg
+            print(msg)
             return
         
-        with open(chunks_path, "r", encoding="utf-8") as f:
-            all_chunks = json.load(f)
-        
-        # Filter chunks for exact component match
+        # Convert to chunk format for processing
         component_chunks = [
-            chunk for chunk in all_chunks 
-            if chunk.get("component_name") == component_name
+            {
+                "chunk_type": meta.get("chunk_type"),
+                "text": doc,
+                "file": meta.get("file"),
+                **meta
+            }
+            for meta, doc in zip(results['metadatas'], results['documents'])
         ]
         
-        if not component_chunks:
-            print(f"No component found with exact name: {component_name}")
-            return
-        
-        print(f"\n📦 Component: {component_name}")
+        # Build output string
+        output_lines = []
+        output_lines.append(f"\n📦 Component: {component_name}")
         
         # Get basic info
         basic_info = next((c for c in component_chunks if c.get("chunk_type") == "basic_info"), None)
         if basic_info:
-            print(f"📁 File: {basic_info.get('file', 'N/A')}")
+            output_lines.append(f"📁 File: {basic_info.get('file', 'N/A')}")
         
         # Get full source code
         full_source = next((c for c in component_chunks if c.get("chunk_type") == "full_source"), None)
         if full_source:
-            print("\n✅ Full Source Code:")
-            print("=" * 80)
-            print(full_source["text"])
-            print("=" * 80)
+            output_lines.append("\n✅ Full Source Code:")
+            output_lines.append("=" * 80)
+            output_lines.append(full_source["text"])
+            output_lines.append("=" * 80)
         else:
-            print("\n⚠️  Full source not available, showing code chunks:")
+            output_lines.append("\n⚠️  Full source not available, showing code chunks:")
             code_chunks = [c for c in component_chunks if c.get("chunk_type") == "code"]
             for chunk in code_chunks:
-                print(chunk["text"])
+                output_lines.append(chunk["text"])
         
         # Get full interface
         full_interface = next((c for c in component_chunks if c.get("chunk_type") == "full_interface"), None)
         if full_interface:
-            print("\n✅ Type Definitions:")
-            print("=" * 80)
-            print(full_interface["text"])
-            print("=" * 80)
+            output_lines.append("\n✅ Type Definitions:")
+            output_lines.append("=" * 80)
+            output_lines.append(full_interface["text"])
+            output_lines.append("=" * 80)
         
         # Get props
         props_chunk = next((c for c in component_chunks if c.get("chunk_type") == "props"), None)
         if props_chunk:
-            print("\n📋 Props:")
-            print("-" * 80)
-            print(props_chunk["text"])
-            print("-" * 80)
+            output_lines.append("\n📋 Props:")
+            output_lines.append("-" * 80)
+            output_lines.append(props_chunk["text"])
+            output_lines.append("-" * 80)
+        
+        output_str = "\n".join(output_lines)
+        if return_string:
+            return output_str
+        print(output_str)
             
     except Exception as e:
-        print(f"Error retrieving component: {e}")
+        error_msg = f"Error retrieving component: {e}"
+        if return_string:
+            return error_msg
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
+
+@app.command()
+def query_component_interactive():
+    """
+    Interactive component query: List components, let user select, then retrieve exact match.
+    Combines list-components and get-component-exact functionality.
+    Retrieves data from ChromaDB (not JSON file).
+    """
+    try:
+        import json
+        
+        # Step 1: Get components from ChromaDB
+        collection = queryer._get_collection()
+        
+        # Get all basic_info chunks from ChromaDB
+        all_data = collection.get(
+            where={"chunk_type": "basic_info"},
+            include=["metadatas"]
+        )
+        
+        component_map = {}
+        for metadata in all_data['metadatas']:
+            name = metadata.get("component_name")
+            if name:
+                component_map[name] = metadata
+        
+        real_components = [
+            name for name in component_map.keys() 
+            if is_real_component(name, component_map[name])
+        ]
+        real_components.sort()
+        
+        if not real_components:
+            print("No components found.")
+            return
+        
+        print(f"\nFound {len(real_components)} component(s):\n")
+        for idx, name in enumerate(real_components):
+            file_path = component_map[name].get('file', '')
+            file_display = '/'.join(file_path.split('/')[-3:]) if file_path else ''
+            print(f"[{idx+1}] {name:30s} ({file_display})")
+        
+        # Step 2: Get user selection
+        choice = input("\nSelect a component by number (or 's' for semantic search): ").strip()
+        
+        # Check if user wants semantic search
+        if choice.lower() == 's':
+            question = input("\nEnter your search query: ").strip()
+            print("\n🔎 Searching semantically, please wait...")
+            results = queryer.query_components(question, k=5, per_component=10)
+            rag_texts = get_rag_context_for_components(results)
+            if results:
+                rag_response = "\n\n".join(rag_texts)
+                print("\nCode Snippet:")
+                print("-" * 80)
+                print(rag_response)
+                print("-" * 80)
+            else:
+                print("No matches found.")
+            return
+        
+        # Step 3: Retrieve exact component
+        try:
+            idx = int(choice) - 1
+            if idx < 0 or idx >= len(real_components):
+                print("Invalid selection.")
+                return
+            
+            selected_name = real_components[idx]
+            print(f"\n🔎 Retrieving exact match for: {selected_name}\n")
+            
+            # Query ChromaDB for this specific component
+            results = collection.get(
+                where={"component_name": selected_name},
+                include=["metadatas", "documents"]
+            )
+            
+            if not results['ids']:
+                print(f"No component found with exact name: {selected_name}")
+                return
+            
+            # Convert to chunk format for processing
+            component_chunks = [
+                {
+                    "chunk_type": meta.get("chunk_type"),
+                    "text": doc,
+                    "file": meta.get("file"),
+                    **meta
+                }
+                for meta, doc in zip(results['metadatas'], results['documents'])
+            ]
+            
+            print(f"\n📦 Component: {selected_name}")
+            
+            basic_info = next((c for c in component_chunks if c.get("chunk_type") == "basic_info"), None)
+            if basic_info:
+                print(f"📁 File: {basic_info.get('file', 'N/A')}")
+            
+            full_source = next((c for c in component_chunks if c.get("chunk_type") == "full_source"), None)
+            if full_source:
+                print("\n✅ Full Source Code:")
+                print("=" * 80)
+                print(full_source["text"])
+                print("=" * 80)
+            else:
+                print("\n⚠️  Full source not available, showing code chunks:")
+                code_chunks = [c for c in component_chunks if c.get("chunk_type") == "code"]
+                for chunk in code_chunks:
+                    print(chunk["text"])
+            
+            full_interface = next((c for c in component_chunks if c.get("chunk_type") == "full_interface"), None)
+            if full_interface:
+                print("\n✅ Type Definitions:")
+                print("=" * 80)
+                print(full_interface["text"])
+                print("=" * 80)
+            
+            props_chunk = next((c for c in component_chunks if c.get("chunk_type") == "props"), None)
+            if props_chunk:
+                print("\n📋 Props:")
+                print("-" * 80)
+                print(props_chunk["text"])
+                print("-" * 80)
+                
+        except ValueError:
+            print("Invalid input. Please enter a number or 's' for search.")
+        except Exception as e:
+            print(f"Error: {e}")
+            import traceback
+            traceback.print_exc()
+            
+    except Exception as e:
+        print(f"Error in interactive query: {e}")
         import traceback
         traceback.print_exc()
 
