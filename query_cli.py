@@ -237,10 +237,21 @@ def query_find_component(q: str, k: int = 5, per_component: int = 1):
 
         # Send RAG response to Ollama
         rag_response = "\n\n".join(rag_texts)
-        print(f"RAG Response:\n{rag_response}\n")
+        # props = extract_props_list(rag_response)
 
-        props = extract_props_list(rag_response)
-        print(f"Extracted Props: {props}\n")
+        # print(f"Extracted Props: {props}\n")
+        print("Before - Extracting code snippet...")
+        print("----------------------------------------------------------------")
+        print(f"{rag_response}")
+        print("----------------------------------------------------------------")
+        print("After - Extracting code snippet...")
+        print("----------------------------------------------------------------")
+        print("Code Snippet:")
+        print("----------------------------------------------------------------")
+        code_snippet = extract_code_snippet(rag_response)
+        for snippet in code_snippet:
+            print(snippet)
+        print("----------------------------------------------------------------")
 
     except ValueError as e:
         print(f"Error: {e}")
@@ -265,19 +276,19 @@ def get_rag_context_for_components(results):
         print(f"[Warning] Could not load all chunks: {e}")
 
     for r in results:
-        print(f"\nComponent: {r['component_name']}  (score: {r['best_score']:.4f})")
-        print("File:", r['file'])
+        # print(f"\nComponent: {r['component_name']}  (score: {r['best_score']:.4f})")
+        # print("File:", r['file'])
         for c in r["top_chunks"]:
-            print("--- snippet ---")
+            # print("--- snippet ---")
             snippet = c["text"][:800].strip()
-            print(snippet)
+            # print(snippet)
             rag_texts.append(snippet)
         # Add interface_code chunk if available
         for chunk in all_chunks:
             if chunk.get("component_id") == r["component_id"] and chunk.get("chunk_type") == "interface_code":
                 interface_snippet = chunk["text"][:800].strip()
-                print("--- interface_code ---")
-                print(interface_snippet)
+                #print("--- interface_code ---")
+                #print(interface_snippet)
                 rag_texts.append(interface_snippet)
                 break
     return rag_texts
@@ -319,16 +330,29 @@ def extract_props_list(rag_response: str):
 def extract_code_snippet(content):
     # Try to find code between triple backticks
     code_blocks = re.findall(r"```(?:\w*\n)?(.*?)```", content, re.DOTALL)
+    snippets = []
     if code_blocks:
         for code in code_blocks:
-            print(code.strip())
+            snippets.append(code.strip())
     else:
-        match = re.search(r"(import React.*?export default\s+\w+;)", content, re.DOTALL)
+        # Try to match function or class component definitions
+        match = re.search(r"(export\s+(const|function|class)\s+\w+[\s\S]+?\{[\s\S]+?\})", content)
         if match:
-            print(match.group(1).strip())
-            return
+            snippets.append(match.group(1).strip())
         else:
-            print("[No code snippet found in the LLM response]")
+            # Try to match import/export default pattern as fallback
+            match2 = re.search(r"(import React.*?export default\s+\w+;)", content, re.DOTALL)
+            if match2:
+                snippets.append(match2.group(1).strip())
+            else:
+                # Fallback: return first 50 lines of the RAG response
+                lines = content.splitlines()
+                fallback = "\n".join(lines[:50]).strip()
+                if fallback:
+                    snippets.append(fallback)
+                else:
+                    snippets.append("[No code snippet found in the RAG response]")
+    return snippets
 
 
 @app.command()
