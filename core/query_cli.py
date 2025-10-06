@@ -662,40 +662,46 @@ def get_component_exact(component_name: str, return_string: bool = False):
             output_lines.append("=" * 80)
             output_lines.append(complete_component["text"])
             output_lines.append("=" * 80)
+            # Don't show individual chunks if we have the complete component
+            has_complete = True
         elif component_source:
             output_lines.append("\n✅ Component Source Code:")
             output_lines.append("=" * 80)
             output_lines.append(component_source["text"])
             output_lines.append("=" * 80)
+            has_complete = False
         else:
             output_lines.append("\n⚠️  Full source not available, showing code chunks:")
             code_chunks = [c for c in component_chunks if c.get("chunk_type") == "code"]
             for chunk in code_chunks:
                 output_lines.append(chunk["text"])
+            has_complete = False
         
-        # Get interfaces and types
-        interfaces_chunk = next((c for c in component_chunks if c.get("chunk_type") == "interfaces"), None)
-        if interfaces_chunk:
-            output_lines.append("\n✅ Type Definitions:")
-            output_lines.append("=" * 80)
-            output_lines.append(interfaces_chunk["text"])
-            output_lines.append("=" * 80)
-        
-        # Get styles
-        styles_chunk = next((c for c in component_chunks if c.get("chunk_type") == "styles"), None)
-        if styles_chunk:
-            output_lines.append("\n🎨 Styles:")
-            output_lines.append("=" * 80)
-            output_lines.append(styles_chunk["text"])
-            output_lines.append("=" * 80)
-        
-        # Get props
-        props_chunk = next((c for c in component_chunks if c.get("chunk_type") == "props"), None)
-        if props_chunk:
-            output_lines.append("\n📋 Props:")
-            output_lines.append("-" * 80)
-            output_lines.append(props_chunk["text"])
-            output_lines.append("-" * 80)
+        # Only show individual chunks if we don't have the complete component
+        if not has_complete:
+            # Get interfaces and types
+            interfaces_chunk = next((c for c in component_chunks if c.get("chunk_type") == "interfaces"), None)
+            if interfaces_chunk:
+                output_lines.append("\n✅ Type Definitions:")
+                output_lines.append("=" * 80)
+                output_lines.append(interfaces_chunk["text"])
+                output_lines.append("=" * 80)
+            
+            # Get styles
+            styles_chunk = next((c for c in component_chunks if c.get("chunk_type") == "styles"), None)
+            if styles_chunk:
+                output_lines.append("\n🎨 Styles:")
+                output_lines.append("=" * 80)
+                output_lines.append(styles_chunk["text"])
+                output_lines.append("=" * 80)
+            
+            # Get props
+            props_chunk = next((c for c in component_chunks if c.get("chunk_type") == "props"), None)
+            if props_chunk:
+                output_lines.append("\n📋 Props:")
+                output_lines.append("-" * 80)
+                output_lines.append(props_chunk["text"])
+                output_lines.append("-" * 80)
         
         output_str = "\n".join(output_lines)
         if return_string:
