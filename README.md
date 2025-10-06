@@ -477,6 +477,10 @@ poc_rag_builder/                  # Main RAG builder project
 │   ├── find_component.py        # Interactive component browser
 │   ├── pipeline_cli.py          # Pipeline utilities
 │   └── embedding_utils.py       # Embedding utilities
+├── server/                       # FastAPI REST API server
+│   ├── api_server.py            # FastAPI application
+│   ├── requirements.txt         # Server dependencies
+│   └── README.md                # Server documentation
 ├── config/
 │   ├── extraction.config.js      # Extraction settings (set repository.root here)
 │   └── chunking.config.py        # Chunking & indexing settings
@@ -486,16 +490,51 @@ poc_rag_builder/                  # Main RAG builder project
 │   ├── component_docs.json       # Extracted components
 │   ├── component_chunks.json     # Chunked components
 │   └── chromadb/                 # Vector database
-├── requirements.txt              # Python dependencies
+├── requirements.txt              # Python dependencies (core)
 ├── package.json                  # Node.js dependencies
+├── FASTAPI-DOCUMENTATION.md      # Complete API documentation
 └── README.md                     # This file
 ```
 
 **Key Notes:**
 - `web-extensions/` is your **target React repository** - clone it into this folder
+- `core/` contains all the RAG system Python modules
+- `server/` contains the FastAPI REST API server for web integration
 - `config/extraction.config.js` sets `repository.root: "web-extensions"` to point to this folder
 - Change the root path if your repository has a different name
 - The RAG builder will scan the repository for components based on your config
+
+---
+
+## 🌐 REST API Server
+
+For web-based access to the RAG system, a FastAPI server is available in the `server/` directory.
+
+### Quick Start
+
+```bash
+# Install server dependencies
+pip3 install -r server/requirements.txt
+
+# Start the server
+python3 server/api_server.py
+```
+
+**Access Points:**
+- API Base: http://localhost:8000
+- Swagger Docs: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### Available Endpoints
+
+- `GET /api/health` - Health check with database stats
+- `POST /api/index/build` - Build component index
+- `POST /api/index/rebuild` - Rebuild with validation
+- `GET /api/components` - List all components
+- `GET /api/components/{name}` - Get specific component
+- `POST /api/components/search` - Semantic search
+
+For complete API documentation with examples, see [FASTAPI-DOCUMENTATION.md](FASTAPI-DOCUMENTATION.md) or [server/README.md](server/README.md).
 
 ---
 
