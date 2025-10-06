@@ -1,9 +1,89 @@
 COMMAND FOR SYSTEM FUNCTIONS
 ============================
 
+## 0. INSTALLATION & SETUP
+------------------------------------------
+
+### 0.1 Install Node.js Dependencies
+Install required packages for React code extraction:
+    
+    npm install
+
+This installs:
+    - glob: File pattern matching
+    - react-docgen-typescript: React component parser
+    - And other dependencies from package.json
+
+
+### 0.2 Install Python Dependencies
+Install required packages for chunking, indexing, and querying:
+    
+    pip3 install -r requirements.txt
+
+This installs:
+    - chromadb: Vector database
+    - sentence-transformers: Embeddings model
+    - typer: CLI framework
+    - requests: HTTP client for LLM APIs
+    - And other dependencies
+
+
+### 0.3 Verify Installation
+Check if all dependencies are installed correctly:
+    
+    node --version
+    python3 --version
+    pip3 list | grep chromadb
+    pip3 list | grep sentence-transformers
+
+
 ## 1. FULL PIPELINE (Extract + Ingest + Index)
 ------------------------------------------
-Run complete pipeline (extract React code, chunk, and store in ChromaDB):
+
+### Option A: Quick Build (Recommended)
+Simple pipeline without versioning - perfect for iterative development:
+    
+    python3 build_index.py
+
+This will:
+    - Extract React components from source code
+    - Chunk the extracted components
+    - Index chunks into ChromaDB
+
+Optional cleanup before build:
+    
+    python3 build_index.py --clean
+
+Features:
+    ✅ Simple and fast
+    ✅ No validation overhead
+    ✅ No versioning complexity
+    ✅ Perfect for iterative development
+
+
+### Option B: Full Build with Validation (Advanced)
+Complete pipeline with validation and versioning:
+    
+    python3 rebuild_index.py
+
+This will:
+    - Extract React components from source code
+    - Validate extraction results
+    - Chunk the extracted components
+    - Validate chunking output
+    - Index chunks into ChromaDB
+    - Validate indexing success
+    - Archive successful builds with versioning
+
+Features:
+    ✅ Automatic validation at each step
+    ✅ Version control for build outputs
+    ✅ Rollback capability if validation fails
+    ✅ Archive previous builds automatically
+
+
+### Option C: Legacy Interactive Pipeline
+Run complete pipeline with interactive query interface:
     
     python3 find_component.py
 

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "ProfilePage",
+    "name": "ProfilePage",
+    "directory": "src/components/ProfilePage",
+    "aggregationType": "multi-file",
+    "files": {
+      "component": "src/components/ProfilePage/ProfilePage.component.tsx",
+      "interface": "src/components/ProfilePage/ProfilePage.interface.ts",
+      "style": "src/components/ProfilePage/ProfilePage.style.ts",
+      "index": "src/components/ProfilePage/index.ts"
+    },
+    "raw": {
+      "component": "import React, { useState } from \"react\";\nimport { Box, Typography, Avatar, TextField, Select, MenuItem, Button, FormControl, InputLabel, Grid } from \"@mui/material\";\nimport { ProfilePageProps, Gender } from \"./ProfilePage.interface\";\nimport useProfilePageStyles from \"./ProfilePage.style\";\n\nconst genders: Gender[] = [\"Male\", \"Female\", \"Other\"];\n\nconst ProfilePage: React.FC<ProfilePageProps> = ({\n\tuser,\n\tonAccept,\n\tonEdit,\n}) => {\n\tconst classes = useProfilePageStyles();\n\tconst [gender, setGender] = useState<Gender>(user.gender || \"Other\");\n\tconst [editMode, setEditMode] = useState(false);\n\tconst [form, setForm] = useState({\n\t\tname: user.name || \"\",\n\t\taddress: user.address || \"\",\n\t\tcountry: user.country || \"\",\n\t\ttelephone: user.telephone || \"\",\n\t\tgender: user.gender || \"Other\",\n\t});\n\n\tconst handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {\n\t\tconst { name, value } = e.target;\n\t\tsetForm((prev) => ({ ...prev, [name as string]: value }));\n\t};\n\n\tconst handleGenderChange = (e: React.ChangeEvent<{ value: unknown }>) => {\n\t\tsetGender(e.target.value as Gender);\n\t\tsetForm((prev) => ({ ...prev, gender: e.target.value as Gender }));\n\t};\n\n\tconst handleEdit = () => {\n\t\tsetEditMode(true);\n\t\tif (onEdit) onEdit();\n\t};\n\n\tconst handleAccept = () => {\n\t\tsetEditMode(false);\n\t\tif (onAccept) onAccept(form);\n\t};\n\n\treturn (\n\t\t<Box className={classes.root} sx={{ maxWidth: 500, mx: \"auto\", mt: 6, p: 4, borderRadius: 4, boxShadow: 3, bgcolor: \"#f5f7fa\" }}>\n\t\t\t<Typography variant=\"h4\" align=\"center\" gutterBottom sx={{ color: \"#1976d2\", fontWeight: 700 }}>\n\t\t\t\tUser Profile\n\t\t\t</Typography>\n\t\t\t<Box display=\"flex\" justifyContent=\"center\" mb={3}>\n\t\t\t\t<Avatar src={user.picture} alt={form.name} sx={{ width: 100, height: 100, borderRadius: \"50%\", boxShadow: 2 }} />\n\t\t\t</Box>\n\t\t\t<Grid container spacing={2}>\n\t\t\t\t<Grid item xs={12}>\n\t\t\t\t\t<TextField\n\t\t\t\t\t\tlabel=\"User Name\"\n\t\t\t\t\t\tname=\"name\"\n\t\t\t\t\t\tvalue={form.name}\n\t\t\t\t\t\tonChange={handleChange}\n\t\t\t\t\t\tfullWidth\n\t\t\t\t\t\tdisabled={!editMode}\n\t\t\t\t\t\tvariant=\"outlined\"\n\t\t\t\t\t/>\n\t\t\t\t</Grid>\n\t\t\t\t<Grid item xs={12}>\n\t\t\t\t\t<FormControl fullWidth variant=\"outlined\">\n\t\t\t\t\t\t<InputLabel id=\"gender-label\">Gender</InputLabel>\n\t\t\t\t\t\t<Select\n\t\t\t\t\t\t\tlabelId=\"gender-label\"\n\t\t\t\t\t\t\tname=\"gender\"\n\t\t\t\t\t\t\tvalue={form.gender}\n\t\t\t\t\t\t\tonChange={handleGenderChange}\n\t\t\t\t\t\t\tlabel=\"Gender\"\n\t\t\t\t\t\t\tdisabled={!editMode}\n\t\t\t\t\t\t>\n\t\t\t\t\t\t\t{genders.map((g) => (\n\t\t\t\t\t\t\t\t<MenuItem key={g} value={g}>{g}</MenuItem>\n\t\t\t\t\t\t\t))}\n\t\t\t\t\t\t</Select>\n\t\t\t\t\t</FormControl>\n\t\t\t\t</Grid>\n\t\t\t\t<Grid item xs={12}>\n\t\t\t\t\t<TextField\n\t\t\t\t\t\tlabel=\"Address\"\n\t\t\t\t\t\tname=\"address\"\n\t\t\t\t\t\tvalue={form.address}\n\t\t\t\t\t\tonChange={handleChange}\n\t\t\t\t\t\tfullWidth\n\t\t\t\t\t\tdisabled={!editMode}\n\t\t\t\t\t\tvariant=\"outlined\"\n\t\t\t\t\t/>\n\t\t\t\t</Grid>\n\t\t\t\t<Grid item xs={12}>\n\t\t\t\t\t<TextField\n\t\t\t\t\t\tlabel=\"Country\"\n\t\t\t\t\t\tname=\"country\"\n\t\t\t\t\t\tvalue={form.country}\n\t\t\t\t\t\tonChange={handleChange}\n\t\t\t\t\t\tfullWidth\n\t\t\t\t\t\tdisabled={!editMode}\n\t\t\t\t\t\tvariant=\"outlined\"\n\t\t\t\t\t/>\n\t\t\t\t</Grid>\n\t\t\t\t<Grid item xs={12}>\n\t\t\t\t\t<TextField\n\t\t\t\t\t\tlabel=\"Telephone Number\"\n\t\t\t\t\t\tname=\"telephone\"\n\t\t\t\t\t\tvalue={form.telephone}\n\t\t\t\t\t\tonChange={handleChange}\n\t\t\t\t\t\tfullWidth\n\t\t\t\t\t\tdisabled={!editMode}\n\t\t\t\t\t\tvariant=\"outlined\"\n\t\t\t\t\t/>\n\t\t\t\t</Grid>\n\t\t\t</Grid>\n\t\t\t<Box display=\"flex\" justifyContent=\"space-between\" mt={4}>\n\t\t\t\t<Button\n\t\t\t\t\tvariant=\"contained\"\n\t\t\t\t\tcolor=\"primary\"\n\t\t\t\t\tonClick={handleAccept}\n\t\t\t\t\tsx={{ minWidth: 120, bgcolor: \"#1976d2\", fontWeight: 600 }}\n\t\t\t\t\tdisabled={!editMode}\n\t\t\t\t>\n\t\t\t\t\tAccept\n\t\t\t\t</Button>\n\t\t\t\t<Button\n\t\t\t\t\tvariant=\"outlined\"\n\t\t\t\t\tcolor=\"secondary\"\n\t\t\t\t\tonClick={handleEdit}\n\t\t\t\t\tsx={{ minWidth: 120, borderColor: \"#1976d2\", color: \"#1976d2\", fontWeight: 600 }}\n\t\t\t\t\tdisabled={editMode}\n\t\t\t\t>\n\t\t\t\t\tEdit\n\t\t\t\t</Button>\n\t\t\t</Box>\n\t\t</Box>\n\t);\n};\n\nexport default ProfilePage;",
+      "interface": "import { TDSButtonProps } from \"@underdog-dev/ui\";\n\nexport type Gender = \"Male\" | \"Female\" | \"Other\";\n\ntype ButtonSize = TDSButtonProps[\"size\"];\ntype ButtonVariant = TDSButtonProps[\"variant\"];\ntype ButtonColor = TDSButtonProps[\"color\"];\n\ninterface ButtonSettings {\n  label: string;\n  size?: ButtonSize;\n  variant?: ButtonVariant;\n  color?: ButtonColor;\n  disabled?: boolean;\n  action?: () => void;\n}\n\nexport interface UserProfile {\n  name?: string;\n  picture?: string;\n  gender?: Gender;\n  address?: string;\n  country?: string;\n  telephone?: string;\n}\n\n\n\nexport interface ProfilePageProps {\n  user: UserProfile;\n  onAccept?: (form: UserProfile) => void;\n  onEdit?: () => void;\n  button1Settings?: ButtonSettings;\n  button2Settings?: ButtonSettings;\n}",
+      "style": "import { makeStyles } from \"@mui/styles\";\n\nconst useProfilePageStyles = makeStyles({\n\troot: {\n\t\tbackground: \"#f5f7fa\",\n\t\tborderRadius: 16,\n\t\tboxShadow: \"0 4px 24px rgba(0,0,0,0.08)\",\n\t\tpadding: 32,\n\t},\n});\n\nexport default useProfilePageStyles;",
+      "index": "// Deprecated: Use ProfilePage instead of OldUserProfileComponent\n// Example: Replace <OldUserProfileComponent /> with <ProfilePage />\nexport { default } from \"./ProfilePage.component\";"
+    },
+    "props": {},
+    "interfaces": [
+      {
+        "name": "UserProfile",
+        "content": "export interface UserProfile {\n  name?: string;\n  picture?: string;\n  gender?: Gender;\n  address?: string;\n  country?: string;\n  telephone?: string;\n}",
+        "raw": "export interface UserProfile {\n  name?: string;\n  picture?: string;\n  gender?: Gender;\n  address?: string;\n  country?: string;\n  telephone?: string;\n}"
+      },
+      {
+        "name": "ProfilePageProps",
+        "content": "export interface ProfilePageProps {\n  user: UserProfile;\n  onAccept?: (form: UserProfile) => void;\n  onEdit?: () => void;\n  button1Settings?: ButtonSettings;\n  button2Settings?: ButtonSettings;\n}",
+        "raw": "export interface ProfilePageProps {\n  user: UserProfile;\n  onAccept?: (form: UserProfile) => void;\n  onEdit?: () => void;\n  button1Settings?: ButtonSettings;\n  button2Settings?: ButtonSettings;\n}"
+      }
+    ],
+    "types": [
+      {
+        "name": "Gender",
+        "definition": "\"Male\" | \"Female\" | \"Other\"",
+        "raw": "export type Gender = \"Male\" | \"Female\" | \"Other\";"
+      }
+    ],
+    "enums": [],
+    "styles": {
+      "type": "mui-makestyles",
+      "content": "import { makeStyles } from \"@mui/styles\";\n\nconst useProfilePageStyles = makeStyles({\n\troot: {\n\t\tbackground: \"#f5f7fa\",\n\t\tborderRadius: 16,\n\t\tboxShadow: \"0 4px 24px rgba(0,0,0,0.08)\",\n\t\tpadding: 32,\n\t},\n});\n\nexport default useProfilePageStyles;",
+      "classes": [],
+      "variables": []
+    },
+    "exports": [
+      "default"
+    ],
+    "description": "A ProfilePage page component with stateful capabilities.",
+    "features": [
+      "stateful"
+    ],
+    "extractionMethod": "aggregated",
+    "componentType": "functional"
+  }
+]

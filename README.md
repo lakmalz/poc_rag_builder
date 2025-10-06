@@ -1,103 +1,471 @@
-# GIT web-extensions repo
-# https://github.com/Ricy137/web-extensions/tree/main
+# RAG Builder for React Components
 
-# Packages (REACT)
-# npm init -y
-# npm install react-docgen glob
+A powerful RAG (Retrieval-Augmented Generation) system for indexing and querying React components from codebases. This tool extracts React components, chunks them intelligently, and stores them in a vector database for semantic search.
 
-# Packages (PYTHON)
-# pip install sentence-transformers numpy typer tqdm
+## 📋 Table of Contents
 
-# For embedding
-# pip install -U sentence-transformers
+- [Overview](#overview)
+- [Pipeline Architecture](#pipeline-architecture)
+- [Installation & Setup](#installation--setup)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Quick Reference](#quick-reference)
 
-# Ex:
-# code run
-    node scripts/code_extractor.js - Extract raw React component info from .tsx/.jsx files.
-    output - (Make sure the file created-"component_docs.json") - Raw structured component metadata from Node extractor.
+---
 
-    python3 ingest_components.py - Chunk components (description, props, code) for embeddings.
-    output - component_chunks.json - Chunked text ready for embeddings.
+## 🎯 Overview
 
-    index_components.py - Create vector embeddings, store metadata in Chromadb.
-    output - chromaDB and 
+This RAG builder processes React codebases to create a searchable index of components, enabling:
+- **Smart component extraction** with multi-file aggregation (component + interface + styles + index)
+- **Intelligent chunking** into complete components and individual parts
+- **Vector-based semantic search** using ChromaDB and sentence-transformers
+- **CLI tools** for querying and retrieving components
 
-    CLI tool to query index and retrieve component info.
-    
-    command: python3 query_cli.py query "How do I create a button component?" --k 5 --per-component 10
-    --k 5: This means "return the top 5 most relevant results" for your query
-    --per-component 10: This means "for each component, return up to 10 code snippets or chunks."
+### Source Repository
+Original React codebase: [web-extensions](https://github.com/Ricy137/web-extensions/tree/main)
 
+---
 
-[React repo] 
-     ↓ (Node extractor)
-component_docs.json 
-     ↓ (Python ingestion & chunking)
-component_chunks.json 
-     ↓ (Embedding + index and store in chromadb)
-chromadb
-     ↓ (Query CLI)
-Retrieve relevant components and snippets
+## 🔄 Pipeline Architecture
 
+```
+[React Repository]
+       ↓
+  [Extraction] - Node.js extractor analyzes React components
+       ↓
+component_docs.json - Structured component metadata
+       ↓
+  [Chunking] - Python processor creates searchable chunks
+       ↓
+component_chunks.json - Chunked text with embeddings metadata
+       ↓
+  [Indexing] - Create vector embeddings & store in ChromaDB
+       ↓
+   chromadb/ - Vector database with semantic search
+       ↓
+  [Query CLI] - Retrieve components via natural language
+       ↓
+  Component Results
+```
 
-sample questions to test.
+---
 
-Here are some example queries you can use to test your system:
+## ⚙️ Installation & Setup
 
-"How do I create a modal dialog?"
-"Show me code for a tooltip component."
-"What props does the Select component accept?"
-"How can I use the Tabs component in my app?"
-"Give me an example of a form with validation."
-"How do I customize the Pagination component?"
-"Show code for a responsive dropdown menu."
-"How do I implement a toast notification?"
-"What is the structure of the PinForm component?"
-"How do I add icons to a button?"
+---
 
-special:
-Can you give me the sample button implementation
+## ⚙️ Installation & Setup
 
-Can you give me the example for CustomDropdown implementation
+### Prerequisites
+- Node.js (v14 or higher)
+- Python 3.8+
+- npm and pip package managers
 
-Can you give me the example implementaion for CustomDropDown
+### 0.1 Install Node.js Dependencies
 
-How do I use the ProfilePage component is a React page? Please iclude all props with example values
+Install required packages for React code extraction:
 
+```bash
+npm install
+```
 
-put into (tsconfig.json)
+**Installs:**
+- `glob` - File pattern matching
+- `react-docgen-typescript` - React component parser
+- Other dependencies from package.json
 
- "include": [
-     "next-env.d.ts", 
-     "**/*.ts", 
-     "**/*.tsx", 
-     "**/*.interface.js", 
-     "**/*.interface.ts", 
-     "**/*.style.ts", 
-     ".next/types/**/*.ts",
-     "src/types/*",
-     ],
+### 0.2 Install Python Dependencies
 
- "exclude": ["node_modules"]
+Install required packages for chunking, indexing, and querying:
 
+```bash
+pip3 install -r requirements.txt
+```
 
- ## AI Assistant Guidelines
-- No automatic .md file creation
-- Ask before creating new files
+**Installs:**
+- `chromadb` - Vector database
+- `sentence-transformers` - Embeddings model
+- `typer` - CLI framework
+- `requests` - HTTP client for LLM APIs
+- Other dependencies
 
-## Should have to keep this extensions in the `tsconfig.json`
-     "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.interface.js", "**/*.interface.ts", "**/*.style.ts", ".next/types/**/*.ts","src/types/*",],
-     "exclude": [
-          "node_modules",
-          "tests",
-          "test",
-          "__tests__",
-          "**/*.test.ts",
-          "**/*.test.tsx",
-          "**/*.spec.ts",
-          "**/*.spec.tsx",
-          "dist",
-          "build",
-          ".next",
-          "out",
-          "coverage"
+### 0.3 Verify Installation
+
+Check if all dependencies are installed correctly:
+
+```bash
+node --version
+python3 --version
+pip3 list | grep chromadb
+pip3 list | grep sentence-transformers
+```
+
+---
+
+## 🚀 Usage
+
+### Full Pipeline Commands
+
+---
+
+## 🚀 Usage
+
+### Full Pipeline Commands
+
+#### Option A: Quick Build (⭐ Recommended)
+
+Simple pipeline without versioning - perfect for iterative development:
+
+```bash
+python3 build_index.py
+```
+
+**Optional cleanup before build:**
+```bash
+python3 build_index.py --clean
+```
+
+**Features:**
+- ✅ Simple and fast
+- ✅ No validation overhead
+- ✅ No versioning complexity
+- ✅ Perfect for iterative development
+
+**This command will:**
+1. Extract React components from source code
+2. Chunk the extracted components
+3. Index chunks into ChromaDB
+
+---
+
+#### Option B: Full Build with Validation (Advanced)
+
+Complete pipeline with validation and versioning:
+
+```bash
+python3 rebuild_index.py
+```
+
+**Features:**
+- ✅ Automatic validation at each step
+- ✅ Version control for build outputs
+- ✅ Rollback capability if validation fails
+- ✅ Archive previous builds automatically
+
+**This command will:**
+1. Extract React components from source code
+2. Validate extraction results
+3. Chunk the extracted components
+4. Validate chunking output
+5. Index chunks into ChromaDB
+6. Validate indexing success
+7. Archive successful builds with versioning
+
+---
+
+#### Option C: Legacy Interactive Pipeline
+
+Run complete pipeline with interactive query interface:
+
+```bash
+python3 find_component.py
+```
+
+**This command will:**
+1. Extract React components from source code
+2. Chunk the extracted components
+3. Index chunks into ChromaDB
+4. Launch interactive query interface
+
+---
+
+### Individual Pipeline Steps
+
+#### Step 1: Extract (React Code Extraction)
+
+Extract React components from repository:
+
+```bash
+node scripts/code_extractor.js
+```
+
+**Output:** `build-index/component_docs.json`
+
+#### Step 2: Ingest & Chunk
+
+Chunk extracted components into searchable pieces:
+
+```bash
+python3 ingest_components.py
+```
+
+**Output:** `build-index/component_chunks.json`
+
+#### Step 3: Index (Store in ChromaDB)
+
+Index chunks into vector database:
+
+```bash
+python3 index_components.py
+```
+
+**Output:** `build-index/chromadb/`
+
+---
+
+### Query Commands
+
+#### List Components
+
+**List format (numbered, with file paths):**
+```bash
+python3 query_cli.py list-components
+# OR
+python3 query_cli.py list-components --output-format list
+```
+
+**Example output:**
+```
+Found 2 component(s):
+[1] ProfilePage                    (components/ProfilePage/ProfilePage.component.tsx)
+[2] CustomDropdown                 (components/CustomDropdown/CustomDropdown.component.tsx)
+```
+
+**JSON format (structured data):**
+```bash
+python3 query_cli.py list-components --output-format json
+```
+
+**Example output:**
+```json
+[
+  {
+    "name": "ProfilePage",
+    "file": "src/components/ProfilePage/ProfilePage.component.tsx",
+    "component_id": "ProfilePage"
+  }
+]
+```
+
+**Names only (simple list):**
+```bash
+python3 query_cli.py list-components --output-format names
+```
+
+**Example output:**
+```
+ProfilePage
+CustomDropdown
+```
+
+---
+
+#### Get Component by Name
+
+Retrieve complete component with all files (component, interfaces, styles):
+
+```bash
+python3 query_cli.py get-component-exact ProfilePage
+```
+
+**Example output:**
+```
+📦 Component: ProfilePage
+📁 File: src/components/ProfilePage/ProfilePage.component.tsx
+
+✅ Complete Component (All Files):
+================================================================================
+COMPONENT (ProfilePage.component.tsx):
+```tsx
+import React, { useState } from "react";
+...full component code...
+export default ProfilePage;
+```
+
+INTERFACES & TYPES (ProfilePage.interface.ts):
+```typescript
+export interface ProfilePageProps {
+  user: UserProfile;
+  onAccept?: (form: UserProfile) => void;
+  ...
+}
+```
+
+STYLES (ProfilePage.style.ts):
+```typescript
+const useProfilePageStyles = makeStyles({...});
+```
+================================================================================
+```
+
+---
+
+#### Semantic Search
+
+Search for components using natural language:
+
+```bash
+python3 query_cli.py query-find-component "user profile form with edit mode" --k 5
+```
+
+**Parameters:**
+- `--k 5` - Return the top 5 most relevant results
+- `--per-component 10` - For each component, return up to 10 code snippets
+
+---
+
+### Interactive Mode
+
+Interactive component browser with selection menu:
+
+```bash
+python3 find_component.py
+```
+
+**Features:**
+- Lists all components
+- Select by number
+- View complete component code
+- Semantic search option ('s' key)
+
+---
+
+## ⚙️ Configuration
+
+---
+
+## ⚙️ Configuration
+
+### Extraction Configuration
+
+Edit what gets extracted from the codebase:
+
+**File:** `config/extraction.config.js`
+
+**Key Settings:**
+```javascript
+{
+  repository: {
+    root: "web-extensions"
+  },
+  files: {
+    include: ["js", "jsx", "ts", "tsx"],
+    exclude: ["**/node_modules/**", "**/tests/**"],
+    includeOnly: ["src/components/**"]  // Optional filter
+  },
+  aggregation: {
+    enabled: true,
+    confidenceThreshold: 3
+  }
+}
+```
+
+### Chunking Configuration
+
+Edit how components are chunked and indexed:
+
+**File:** `config/chunking.config.py`
+
+**Key Settings:**
+```python
+CHUNKING_CONFIG = {
+    "chunk_types": [...],
+    "max_chunk_size": 2000,
+    "include_metadata": True
+}
+
+INDEXING_CONFIG = {
+    "batch_size": 100,
+    "embedding_model": "all-MiniLM-L6-v2"
+}
+```
+
+---
+
+## 🔄 Rebuild Index
+
+Clear and rebuild the entire index:
+
+```bash
+rm -rf build-index/
+python3 build_index.py
+```
+
+---
+
+## 📚 Quick Reference
+
+| Task                          | Command                                                      |
+|-------------------------------|--------------------------------------------------------------|
+| **Quick build** (recommended) | `python3 build_index.py`                                     |
+| **Quick build with clean**    | `python3 build_index.py --clean`                             |
+| **Full build with validation**| `python3 rebuild_index.py`                                   |
+| **Interactive pipeline**      | `python3 find_component.py`                                  |
+| **Extract only**              | `node scripts/code_extractor.js`                             |
+| **Chunk only**                | `python3 ingest_components.py`                               |
+| **Index only**                | `python3 index_components.py`                                |
+| **List components (list)**    | `python3 query_cli.py list-components`                       |
+| **List components (JSON)**    | `python3 query_cli.py list-components --output-format json`  |
+| **List components (names)**   | `python3 query_cli.py list-components --output-format names` |
+| **Get component by name**     | `python3 query_cli.py get-component-exact ProfilePage`       |
+| **Search components**         | `python3 query_cli.py query-find-component "search term"`    |
+| **Interactive mode**          | `python3 find_component.py`                                  |
+| **Rebuild index**             | `rm -rf build-index/ && python3 build_index.py`              |
+
+---
+
+## 📂 Project Structure
+
+```
+poc_rag_builder/
+├── config/
+│   ├── extraction.config.js      # Extraction settings
+│   └── chunking.config.py        # Chunking & indexing settings
+├── scripts/
+│   └── code_extractor.js         # Node.js component extractor
+├── build-index/
+│   ├── component_docs.json       # Extracted components
+│   ├── component_chunks.json     # Chunked components
+│   └── chromadb/                 # Vector database
+├── build_index.py                # Quick build pipeline
+├── rebuild_index.py              # Full build with validation
+├── ingest_components.py          # Chunking processor
+├── index_components.py           # ChromaDB indexer
+├── query_cli.py                  # Query CLI tool
+├── find_component.py             # Interactive component browser
+├── requirements.txt              # Python dependencies
+├── package.json                  # Node.js dependencies
+└── README.md                     # This file
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+### Empty Extraction
+If `component_docs.json` is empty:
+1. Check `config/extraction.config.js` for correct `includeOnly` patterns
+2. Verify the repository path is correct
+3. Ensure component files match the include patterns
+
+### Query Returns No Results
+If queries return no components:
+1. Verify the index was built: `ls -la build-index/chromadb/`
+2. Check that chunks were created: `cat build-index/component_chunks.json`
+3. Rebuild the index: `python3 build_index.py --clean`
+
+### Missing Dependencies
+If you encounter import errors:
+1. Reinstall dependencies: `pip3 install -r requirements.txt`
+2. Verify installation: `pip3 list | grep chromadb`
+3. Check Python version: `python3 --version` (requires 3.8+)
+
+---
+
+## 📝 License
+
+This project is for educational and development purposes.
+
+## 🙏 Credits
+
+Original React codebase: [web-extensions](https://github.com/Ricy137/web-extensions) by Ricy137
