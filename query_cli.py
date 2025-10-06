@@ -592,12 +592,19 @@ def get_component_exact(component_name: str, return_string: bool = False):
         if basic_info:
             output_lines.append(f"📁 File: {basic_info.get('file', 'N/A')}")
         
-        # Get full source code
-        full_source = next((c for c in component_chunks if c.get("chunk_type") == "full_source"), None)
-        if full_source:
-            output_lines.append("\n✅ Full Source Code:")
+        # Get full source code - Try complete_component first, then component_source
+        complete_component = next((c for c in component_chunks if c.get("chunk_type") == "complete_component"), None)
+        component_source = next((c for c in component_chunks if c.get("chunk_type") == "component_source"), None)
+        
+        if complete_component:
+            output_lines.append("\n✅ Complete Component (All Files):")
             output_lines.append("=" * 80)
-            output_lines.append(full_source["text"])
+            output_lines.append(complete_component["text"])
+            output_lines.append("=" * 80)
+        elif component_source:
+            output_lines.append("\n✅ Component Source Code:")
+            output_lines.append("=" * 80)
+            output_lines.append(component_source["text"])
             output_lines.append("=" * 80)
         else:
             output_lines.append("\n⚠️  Full source not available, showing code chunks:")
@@ -605,12 +612,20 @@ def get_component_exact(component_name: str, return_string: bool = False):
             for chunk in code_chunks:
                 output_lines.append(chunk["text"])
         
-        # Get full interface
-        full_interface = next((c for c in component_chunks if c.get("chunk_type") == "full_interface"), None)
-        if full_interface:
+        # Get interfaces and types
+        interfaces_chunk = next((c for c in component_chunks if c.get("chunk_type") == "interfaces"), None)
+        if interfaces_chunk:
             output_lines.append("\n✅ Type Definitions:")
             output_lines.append("=" * 80)
-            output_lines.append(full_interface["text"])
+            output_lines.append(interfaces_chunk["text"])
+            output_lines.append("=" * 80)
+        
+        # Get styles
+        styles_chunk = next((c for c in component_chunks if c.get("chunk_type") == "styles"), None)
+        if styles_chunk:
+            output_lines.append("\n🎨 Styles:")
+            output_lines.append("=" * 80)
+            output_lines.append(styles_chunk["text"])
             output_lines.append("=" * 80)
         
         # Get props
