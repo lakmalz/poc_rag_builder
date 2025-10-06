@@ -3,21 +3,196 @@ const path = require("path");
 const glob = require("glob");
 const reactDocgenTs = require("react-docgen-typescript");
 
+// ============================================
+// LOAD CONFIGURATION
+// ============================================
+const CONFIG = require("../config/extraction.config.js");
+
 class RepositoryWideExtractor {
-  static extractComponents() {
-    // Extract from entire repository, not just components folder
-    const repoRoot = path.join(__dirname, "..", "Custom-ui");
-    const outFile = path.join(__dirname, "..", "build-index", "component_docs.json");
+  
+  /**
+   * SMART AGGREGATION: Group component files by directory
+   * Detects components with multiple files: *.component.tsx, *.interface.ts, *.style.ts, index.ts
+   */
+  static groupComponentFiles(files, repoRoot) {
+    const componentGroups = new Map();
+    const standaloneFiles = [];
     
-    // If output file exists, skip extraction
-    if (fs.existsSync(outFile)) {
-      console.log(`⚠️ Output file already exists: ${outFile}`);
-      console.log('⏩ Skipping extraction. Delete the file to regenerate.');
+    console.log(`\n🔍 Analyzing component directory structure...`);
+    
+    files.forEach(file => {
+      const dir = path.dirname(file);
+      const basename = path.basename(file);
+      const relativeDir = path.relative(repoRoot, dir);
+      
+      // Check if this looks like a component file
+      const isComponentFile = basename.match(CONFIG.aggregation.patterns.component);
+      const isInterfaceFile = basename.match(CONFIG.aggregation.patterns.interface);
+      const isStyleFile = basename.match(CONFIG.aggregation.patterns.style);
+      const isIndexFile = basename.match(CONFIG.aggregation.patterns.index);
+      
+      // Use config to determine if index files should be aggregated everywhere
+      const shouldAggregateIndex = CONFIG.aggregation.aggregateIndexEverywhere || relativeDir.includes('components');
+      if (isComponentFile || isInterfaceFile || isStyleFile || (isIndexFile && shouldAggregateIndex)) {
+        // This file belongs to a component group
+        if (!componentGroups.has(dir)) {
+          componentGroups.set(dir, {
+            directory: dir,
+            relativeDir: relativeDir,
+            componentName: path.basename(dir),
+            files: {
+              component: null,
+              interface: null,
+              style: null,
+              index: null
+            }
+          });
+        }
+        
+        const group = componentGroups.get(dir);
+        
+        if (isComponentFile) {
+          group.files.component = file;
+          // Extract actual component name from filename (e.g., "ProfilePage" from "ProfilePage.component.tsx")
+          const match = basename.match(/^(.+)\.component\.(tsx|jsx)$/);
+          if (match) {
+            group.componentName = match[1];
+          }
+        } else if (isInterfaceFile) {
+          group.files.interface = file;
+        } else if (isStyleFile) {
+          group.files.style = file;
+        } else if (isIndexFile) {
+          group.files.index = file;
+        }
+      } else {
+        // Standalone file (not part of a component group)
+        standaloneFiles.push(file);
+      }
+    });
+    
+    // Log statistics
+    console.log(`📦 Found ${componentGroups.size} component directories`);
+    console.log(`📄 Found ${standaloneFiles.length} standalone files`);
+    
+    // Log grouped components
+    if (componentGroups.size > 0) {
+      console.log(`\n📁 Component Groups:`);
+      componentGroups.forEach((group, dir) => {
+        const fileCount = Object.values(group.files).filter(f => f !== null).length;
+        const fileTypes = [];
+        if (group.files.component) fileTypes.push('component');
+        if (group.files.interface) fileTypes.push('interface');
+        if (group.files.style) fileTypes.push('style');
+        if (group.files.index) fileTypes.push('index');
+        console.log(`   ${group.componentName} (${fileCount} files: ${fileTypes.join(', ')})`);
+      });
+    }
+    
+    return { componentGroups, standaloneFiles };
+  }
+  
+  /**
+   * Extract interfaces and types from interface files
+   */
+  static extractInterfacesFromFile(fileContent, filePath) {
+    const interfaces = [];
+    const types = [];
+    const enums = [];
+    
+    // Extract interfaces
+    const interfaceRegex = /export\s+interface\s+(\w+)\s*(?:extends\s+[^{]*)?\s*{([^}]+)}/gs;
+    let match;
+    while ((match = interfaceRegex.exec(fileContent)) !== null) {
+      interfaces.push({
+        name: match[1],
+        content: match[0],
+        raw: match[0]
+      });
+    }
+    
+    // Extract type aliases
+    const typeRegex = /export\s+type\s+(\w+)\s*=\s*([^;]+);/gs;
+    while ((match = typeRegex.exec(fileContent)) !== null) {
+      types.push({
+        name: match[1],
+        definition: match[2].trim(),
+        raw: match[0]
+      });
+    }
+    
+    // Extract enums
+    const enumRegex = /export\s+enum\s+(\w+)\s*{([^}]+)}/gs;
+    while ((match = enumRegex.exec(fileContent)) !== null) {
+      enums.push({
+        name: match[1],
+        values: match[2].trim(),
+        raw: match[0]
+      });
+    }
+    
+    return { interfaces, types, enums };
+  }
+  
+  /**
+   * Extract style information from style files
+   */
+  static extractStylesFromFile(fileContent, filePath) {
+    const styles = {
+      type: null,
+      content: fileContent,
+      classes: [],
+      variables: []
+    };
+    
+    // Detect style type
+    if (fileContent.includes('makeStyles') || fileContent.includes('@mui/styles')) {
+      styles.type = 'mui-makestyles';
+    } else if (fileContent.includes('styled-components') || fileContent.includes('styled.')) {
+      styles.type = 'styled-components';
+    } else if (fileContent.includes('@emotion')) {
+      styles.type = 'emotion';
+    } else if (fileContent.includes('css`') || fileContent.includes('css(')) {
+      styles.type = 'css-in-js';
+    }
+    
+    return styles;
+  }
+  
+  static extractComponents() {
+
+    // ============================================
+    // LOAD PATHS FROM CONFIG
+    // ============================================
+    const repoRoot = path.join(__dirname, "..", CONFIG.repository.root);
+    const buildIndexDir = path.join(__dirname, "..", CONFIG.repository.buildDir);
+    const outFile = path.join(buildIndexDir, "component_docs.json");
+
+    // Stop process if repository does not exist
+    if (!fs.existsSync(repoRoot)) {
+      console.error(`❌ Repository directory not found: ${repoRoot}`);
+      console.error('🛑 Extraction stopped. Please provide a valid repository.');
       return;
+    }
+
+    // Ensure build-index directory exists
+    if (!fs.existsSync(buildIndexDir)) {
+      fs.mkdirSync(buildIndexDir, { recursive: true });
+      console.log(`📁 Created missing directory: ${buildIndexDir}`);
+    }
+
+    //If output file exists, backup and continue
+    if (CONFIG.logging.createBackup && fs.existsSync(outFile)) {
+      const backupFile = outFile.replace('.json', `.backup.${Date.now()}.json`);
+      fs.copyFileSync(outFile, backupFile);
+      console.log(`⚠️ Output file already exists: ${outFile}`);
+      console.log(`📦 Created backup: ${backupFile}`);
+      console.log('♻️  Re-extracting components...');
     }
 
     console.log(`\n🔍 Starting repository-wide extraction from: ${repoRoot}`);
     console.log(`📁 Repository exists: ${fs.existsSync(repoRoot)}`);
+    console.log(`⚙️  Using configuration from: config/extraction.config.js`);
 
     const components = [];
     const debugInfo = {
@@ -28,51 +203,45 @@ class RepositoryWideExtractor {
       directoryStats: {}
     };
 
-    // Scan entire repository with comprehensive patterns
-    const files = glob.sync(path.join(repoRoot, "**/*.{js,jsx,ts,tsx}"), {
-      ignore: [
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/build/**',
-        '**/coverage/**',
-        '**/.next/**',
-        '**/.nuxt/**',
-        '**/out/**',
-        '**/public/**',
-        '**/*.test.*',
-        '**/*.spec.*',
-        '**/*.stories.*',
-        '**/*.d.ts',
-        '**/cypress/**',
-        '**/e2e/**',
-        '**/__tests__/**',
-        '**/__mocks__/**',
-        '**/storybook-static/**'
-      ]
+    // ============================================
+    // BUILD FILE PATTERN FROM CONFIG
+    // ============================================
+    const fileExtensions = CONFIG.files.include.join(',');
+    const globPattern = path.join(repoRoot, `**/*.{${fileExtensions}}`);
+    
+    // Scan entire repository with patterns from config
+    const files = glob.sync(globPattern, {
+      ignore: CONFIG.files.exclude
     });
 
     console.log(`📄 Found ${files.length} React/TypeScript files across the repository`);
     
-    // Analyze directory distribution
-    const dirStats = {};
-    files.forEach(file => {
-      const relativePath = path.relative(repoRoot, file);
-      const dir = path.dirname(relativePath);
-      const topLevelDir = dir.split(path.sep)[0] || 'root';
-      dirStats[topLevelDir] = (dirStats[topLevelDir] || 0) + 1;
-    });
+    // Apply includeOnly filter if specified
+    let filteredFiles = files;
+    if (CONFIG.files.includeOnly && CONFIG.files.includeOnly.length > 0) {
+      filteredFiles = files.filter(file => {
+        const relativePath = path.relative(repoRoot, file);
+        return CONFIG.files.includeOnly.some(pattern => {
+          // Convert glob pattern to regex for matching
+          const regexPattern = pattern
+            .replace(/\*\*/g, '.*')
+            .replace(/\*/g, '[^/]*')
+            .replace(/\//g, '\\/');
+          return new RegExp(regexPattern).test(relativePath);
+        });
+      });
+      console.log(`� Filtered to ${filteredFiles.length} files based on includeOnly patterns`);
+    }
     
-    console.log(`\n📊 File distribution by directory:`);
-    Object.entries(dirStats).forEach(([dir, count]) => {
-      console.log(`   📁 ${dir}: ${count} files`);
-    });
-    debugInfo.directoryStats = dirStats;
-
-    // Show sample files from different directories
-    console.log(`\n📋 Sample files to be processed:`);
-    const sampleFiles = files.slice(0, 10);
-    sampleFiles.forEach(f => console.log(`   - ${path.relative(repoRoot, f)}`));
-    if (files.length > 10) console.log(`   ... and ${files.length - 10} more files`);
+    // ========================================
+    // SMART AGGREGATION: Group component files
+    // ========================================
+    if (!CONFIG.aggregation.enabled) {
+      console.log(`⚠️  Smart Aggregation is DISABLED in config`);
+    }
+    
+    const { componentGroups, standaloneFiles } = this.groupComponentFiles(filteredFiles, repoRoot);
+    
 
     // Enhanced parser configuration
     let parser;
@@ -276,7 +445,7 @@ class RepositoryWideExtractor {
       }
 
       debugResult.confidence = score;
-      debugResult.isComponent = score >= 3; // Threshold for component detection
+      debugResult.isComponent = score >= CONFIG.detection.confidenceThreshold;
 
       if (!debugResult.isComponent) {
         if (score === 0) {
@@ -296,78 +465,78 @@ class RepositoryWideExtractor {
       return debugResult.isComponent;
     }
 
-    function extractPropsFromContent(fileContent, componentName) {
-      const props = {};
+    // function extractPropsFromContent(fileContent, componentName) {
+    //   const props = {};
       
-      // Enhanced patterns for props extraction
-      const propPatterns = [
-        // Interface patterns
-        { 
-          regex: new RegExp(`interface\\s+${componentName}Props\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'),
-          name: 'interfaceComponentProps'
-        },
-        { 
-          regex: /interface\s+Props\s*(?:extends\s+[^{]*)?\\s*{([^}]+)}/gs,
-          name: 'interfaceProps'
-        },
-        { 
-          regex: new RegExp(`interface\\s+I${componentName}\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'),
-          name: 'interfaceIComponent'
-        },
-        // Type patterns
-        { 
-          regex: new RegExp(`type\\s+${componentName}Props\\s*=\\s*{([^}]+)}`, 'gs'),
-          name: 'typeComponentProps'
-        },
-        { 
-          regex: /type\s+Props\s*=\s*{([^}]+)}/gs,
-          name: 'typeProps'
-        },
-        // Export patterns
-        { 
-          regex: /export\s+type\s+Props\s*=\s*[^{]*{([^}]+)}/gs,
-          name: 'exportTypeProps'
-        },
-        // Utility type patterns
-        { 
-          regex: /export\s+type\s+Props\s*=\s*OverWrite<[^,]+,\\s*{([^}]+)}\\s*>/gs,
-          name: 'overwriteProps'
-        },
-        {
-          regex: /type\s+Props\s*=\s*Omit<[^,]+,\\s*[^>]+>\\s*&\\s*{([^}]+)}/gs,
-          name: 'omitProps'
-        },
-        {
-          regex: /type\s+Props\s*=\s*[^{]*&\\s*{([^}]+)}/gs,
-          name: 'intersectionProps'
-        }
-      ];
+    //   // Enhanced patterns for props extraction
+    //   const propPatterns = [
+    //     // Interface patterns
+    //     { 
+    //       regex: new RegExp(`interface\\s+${componentName}Props\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'),
+    //       name: 'interfaceComponentProps'
+    //     },
+    //     { 
+    //       regex: /interface\s+Props\s*(?:extends\s+[^{]*)?\\s*{([^}]+)}/gs,
+    //       name: 'interfaceProps'
+    //     },
+    //     { 
+    //       regex: new RegExp(`interface\\s+I${componentName}\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'),
+    //       name: 'interfaceIComponent'
+    //     },
+    //     // Type patterns
+    //     { 
+    //       regex: new RegExp(`type\\s+${componentName}Props\\s*=\\s*{([^}]+)}`, 'gs'),
+    //       name: 'typeComponentProps'
+    //     },
+    //     { 
+    //       regex: /type\s+Props\s*=\s*{([^}]+)}/gs,
+    //       name: 'typeProps'
+    //     },
+    //     // Export patterns
+    //     { 
+    //       regex: /export\s+type\s+Props\s*=\s*[^{]*{([^}]+)}/gs,
+    //       name: 'exportTypeProps'
+    //     },
+    //     // Utility type patterns
+    //     { 
+    //       regex: /export\s+type\s+Props\s*=\s*OverWrite<[^,]+,\\s*{([^}]+)}\\s*>/gs,
+    //       name: 'overwriteProps'
+    //     },
+    //     {
+    //       regex: /type\s+Props\s*=\s*Omit<[^,]+,\\s*[^>]+>\\s*&\\s*{([^}]+)}/gs,
+    //       name: 'omitProps'
+    //     },
+    //     {
+    //       regex: /type\s+Props\s*=\s*[^{]*&\\s*{([^}]+)}/gs,
+    //       name: 'intersectionProps'
+    //     }
+    //   ];
       
-      for (const pattern of propPatterns) {
-        const match = pattern.regex.exec(fileContent);
-        if (match && match[1]) {
-          const propsContent = match[1];
-          const extractedProps = parsePropsContent(propsContent);
-          if (Object.keys(extractedProps).length > 0) {
-            Object.assign(props, extractedProps);
-            console.log(`      ✅ Props extracted using ${pattern.name}: ${Object.keys(extractedProps).length} props`);
-            break;
-          }
-        }
-      }
+    //   for (const pattern of propPatterns) {
+    //     const match = pattern.regex.exec(fileContent);
+    //     if (match && match[1]) {
+    //       const propsContent = match[1];
+    //       const extractedProps = parsePropsContent(propsContent);
+    //       if (Object.keys(extractedProps).length > 0) {
+    //         Object.assign(props, extractedProps);
+    //         console.log(`      ✅ Props extracted using ${pattern.name}: ${Object.keys(extractedProps).length} props`);
+    //         break;
+    //       }
+    //     }
+    //   }
       
-      // Fallback: extract from function parameters
-      if (Object.keys(props).length === 0) {
-        const paramProps = extractPropsFromParameters(fileContent);
-        if (Object.keys(paramProps).length > 0) {
-          Object.assign(props, paramProps);
-          console.log(`      ✅ Props extracted from parameters: ${Object.keys(paramProps).length} props`);
-        }
-      }
+    //   // Fallback: extract from function parameters
+    //   if (Object.keys(props).length === 0) {
+    //     const paramProps = extractPropsFromParameters(fileContent);
+    //     if (Object.keys(paramProps).length > 0) {
+    //       Object.assign(props, paramProps);
+    //       console.log(`      ✅ Props extracted from parameters: ${Object.keys(paramProps).length} props`);
+    //     }
+    //   }
       
-      return props;
-    }
-
+    //   return props;
+    // }
+// ---------------------------------------------------------
     function extractPropsFromParameters(fileContent) {
       const props = {};
       
@@ -401,21 +570,189 @@ class RepositoryWideExtractor {
       return props;
     }
 
-    function parsePropsContent(propsContent) {
+    function extractPropsFromContent(fileContent, componentName, thisFilePath) {
       const props = {};
+      const propPatterns = [
+        { regex: new RegExp(`interface\\s+${componentName}Props\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'), name: 'interfaceComponentProps' },
+        { regex: /interface\s+Props\s*(?:extends\s+[^{]*)?\s*{([^}]+)}/gs, name: 'interfaceProps' },
+        { regex: new RegExp(`interface\\s+I${componentName}\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'), name: 'interfaceIComponent' },
+        { regex: new RegExp(`type\\s+${componentName}Props\\s*=\\s*{([^}]+)}`, 'gs'), name: 'typeComponentProps' },
+        { regex: /type\s+Props\s*=\s*{([^}]+)}/gs, name: 'typeProps' },
+        { regex: /export\s+type\s+Props\s*=\s*[^{]*{([^}]+)}/gs, name: 'exportTypeProps' },
+        { regex: /export\s+type\s+Props\s*=\s*OverWrite<[^,]+,\s*{([^}]+)}\s*>/gs, name: 'overwriteProps' },
+        { regex: /type\s+Props\s*=\s*Omit<[^,]+,\s*[^>]+>\s*&\s*{([^}]+)}/gs, name: 'omitProps' },
+        { regex: /type\s+Props\s*=\s*[^{]*&\s*{([^}]+)}/gs, name: 'intersectionProps' }
+      ];
+
+      // Try local file first
+      let foundLocal = false;
+      for (const pattern of propPatterns) {
+        const match = pattern.regex.exec(fileContent);
+        console.log(`[DEBUG] Trying pattern '${pattern.name}' in file '${thisFilePath}' for component '${componentName}'`);
+        if (match && match[1]) {
+          console.log(`[DEBUG] Pattern '${pattern.name}' matched. Extracting props...`);
+          const propsContent = match[1];
+          const extractedProps = parsePropsContent(propsContent, thisFilePath);
+          if (Object.keys(extractedProps).length > 0) {
+            Object.assign(props, extractedProps);
+            foundLocal = true;
+            break;
+          } else {
+            console.log(`[DEBUG] Pattern '${pattern.name}' matched but no props extracted.`);
+          }
+        } else {
+          console.log(`[DEBUG] Pattern '${pattern.name}' did not match.`);
+        }
+      }
+
+      // If still empty, try to extract from all imported interface/type files ending with Props
+      let importedInterfaceCode = null;
+      if (!foundLocal && Object.keys(props).length === 0) {
+        // Find all imports
+        const importRegex = /import\s+\{([^}]+)\}\s+from\s+["'](.+?)["']/g;
+        let importMatch;
+        let foundImportedProps = false;
+        console.log(`[DEBUG] Scanning for imported props types in file '${thisFilePath}'`);
+        while ((importMatch = importRegex.exec(fileContent)) !== null) {
+          const importedTypes = importMatch[1].split(',').map(t => t.trim());
+          const importPath = importMatch[2];
+          importedTypes.forEach(importedType => {
+            if (/Props$/.test(importedType)) {
+              let interfaceFile = importPath;
+              if (!interfaceFile.endsWith('.ts') && !interfaceFile.endsWith('.tsx')) {
+                interfaceFile = path.join(path.dirname(thisFilePath), importPath + '.ts');
+                if (!fs.existsSync(interfaceFile)) {
+                  interfaceFile = path.join(path.dirname(thisFilePath), importPath + '.tsx');
+                }
+              } else {
+                interfaceFile = path.join(path.dirname(thisFilePath), importPath);
+              }
+              console.log(`[DEBUG] Found imported props type: '${importedType}' from '${interfaceFile}'`);
+              if (fs.existsSync(interfaceFile)) {
+                const interfaceContent = fs.readFileSync(interfaceFile, 'utf8');
+                importedInterfaceCode = interfaceContent;
+                // Try to extract the props from the imported type
+                for (const pattern of propPatterns) {
+                  // Use importedType instead of componentName
+                  const regex = new RegExp(`interface\\s+${importedType}\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs');
+                  const match = regex.exec(interfaceContent);
+                  console.log(`[DEBUG] Trying pattern '${pattern.name}' in imported file '${interfaceFile}' for type '${importedType}'`);
+                  if (match && match[1]) {
+                    console.log(`[DEBUG] Pattern '${pattern.name}' matched in imported file. Extracting props...`);
+                    const propsContent = match[1];
+                    const extractedProps = parsePropsContent(propsContent, interfaceFile);
+                    if (Object.keys(extractedProps).length > 0) {
+                      Object.assign(props, extractedProps);
+                      foundImportedProps = true;
+                      break;
+                    } else {
+                      console.log(`[DEBUG] Pattern '${pattern.name}' matched in imported file but no props extracted.`);
+                    }
+                  } else {
+                    // Try type alias
+                    const typeRegex = new RegExp(`type\\s+${importedType}\\s*=\\s*{([^}]+)}`, 'gs');
+                    const typeMatch = typeRegex.exec(interfaceContent);
+                    if (typeMatch && typeMatch[1]) {
+                      console.log(`[DEBUG] Type alias matched for '${importedType}' in imported file. Extracting props...`);
+                      const propsContent = typeMatch[1];
+                      const extractedProps = parsePropsContent(propsContent, interfaceFile);
+                      if (Object.keys(extractedProps).length > 0) {
+                        Object.assign(props, extractedProps);
+                        foundImportedProps = true;
+                        break;
+                      } else {
+                        console.log(`[DEBUG] Type alias matched in imported file but no props extracted.`);
+                      }
+                    } else {
+                      console.log(`[DEBUG] Pattern '${pattern.name}' did not match in imported file.`);
+                    }
+                  }
+                }
+              } else {
+                console.log(`[DEBUG] Interface file does not exist: '${interfaceFile}'`);
+              }
+            }
+          });
+        }
+        if (!foundImportedProps) {
+          console.log(`[DEBUG] No imported props type found.`);
+        }
+      }
+      // Return both props and importedInterfaceCode
+      return { props, importedInterfaceCode };
+
+      // Fallback: extract from function parameters
+      if (Object.keys(props).length === 0) {
+        console.log(`[DEBUG] Trying fallback: extractPropsFromParameters`);
+        const paramProps = extractPropsFromParameters(fileContent);
+        if (Object.keys(paramProps).length > 0) {
+          Object.assign(props, paramProps);
+          console.log(`[DEBUG] Fallback extracted ${Object.keys(paramProps).length} props.`);
+        } else {
+          console.log(`[DEBUG] Fallback did not extract any props.`);
+        }
+      }
+      console.log(`[DEBUG] Final extracted props for component '${componentName}' in file '${thisFilePath}':`, props);
+      return props;
+    }
+
+    // function parsePropsContent(propsContent) {
+    //   const props = {};
       
-      // Handle multi-line props with proper brace matching
+    //   // Handle multi-line props with proper brace matching
+    //   let depth = 0;
+    //   let current = '';
+    //   const propDefinitions = [];
+      
+    //   for (let i = 0; i < propsContent.length; i++) {
+    //     const char = propsContent[i];
+        
+    //     if (char === '{' || char === '<' || char === '(') depth++;
+    //     if (char === '}' || char === '>' || char === ')') depth--;
+        
+    //     if ((char === ';' || char === '\\n' || char === ',') && depth === 0) {
+    //       if (current.trim()) {
+    //         propDefinitions.push(current.trim());
+    //         current = '';
+    //       }
+    //     } else {
+    //       current += char;
+    //     }
+    //   }
+      
+    //   if (current.trim()) {
+    //     propDefinitions.push(current.trim());
+    //   }
+      
+    //   propDefinitions.forEach(definition => {
+    //     // Match: propName?: type | propName: type
+    //     const propMatch = definition.match(/^(\w+)(\?)?:\s*(.+?)(?:\s*\/\*\*(.+?)\*\/)?$/);
+    //     if (propMatch) {
+    //       const [, propName, isOptional, propType, comment] = propMatch;
+    //       props[propName] = {
+    //         name: propName,
+    //         type: { name: propType.trim().replace(/[,;]$/, '') },
+    //         required: !isOptional,
+    //         description: comment?.trim() || generatePropDescription(propName, propType),
+    //         defaultValue: null
+    //       };
+    //     }
+    //   });
+      
+    //   return props;
+    // }
+
+
+    function parsePropsContent(propsContent, parentFilePath) {
+      const props = {};
       let depth = 0;
       let current = '';
       const propDefinitions = [];
-      
       for (let i = 0; i < propsContent.length; i++) {
         const char = propsContent[i];
-        
         if (char === '{' || char === '<' || char === '(') depth++;
         if (char === '}' || char === '>' || char === ')') depth--;
-        
-        if ((char === ';' || char === '\\n' || char === ',') && depth === 0) {
+        if ((char === ';' || char === '\n' || char === ',') && depth === 0) {
           if (current.trim()) {
             propDefinitions.push(current.trim());
             current = '';
@@ -424,26 +761,102 @@ class RepositoryWideExtractor {
           current += char;
         }
       }
-      
       if (current.trim()) {
         propDefinitions.push(current.trim());
       }
-      
+      console.log(`[DEBUG] Parsing props content:`, propDefinitions);
       propDefinitions.forEach(definition => {
-        // Match: propName?: type | propName: type
-        const propMatch = definition.match(/^(\w+)(\?)?:\s*(.+?)(?:\s*\/\*\*(.+?)\*\/)?$/);
-        if (propMatch) {
-          const [, propName, isOptional, propType, comment] = propMatch;
-          props[propName] = {
-            name: propName,
-            type: { name: propType.trim().replace(/[,;]$/, '') },
-            required: !isOptional,
-            description: comment?.trim() || generatePropDescription(propName, propType),
-            defaultValue: null
-          };
-        }
+        // Split multi-line/grouped definitions into individual lines
+        definition.split(/;|\n/).forEach(line => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+          // Match function type: onAccept?: (form: UserProfile) => void
+          const funcMatch = trimmed.match(/^([\w$]+)(\?)?:\s*\(([^)]*)\)\s*=>\s*([^;]+)$/);
+          if (funcMatch) {
+            const [, propName, isOptional, params, returnType] = funcMatch;
+            props[propName] = {
+              name: propName,
+              type: { name: `(${params}) => ${returnType}` },
+              required: !isOptional,
+              description: generatePropDescription(propName, `function`),
+              defaultValue: null,
+              functionParams: params.split(',').map(p => p.trim()).filter(Boolean),
+              functionReturnType: returnType.trim()
+            };
+            return;
+          }
+          // Match normal prop or nested type
+          const propMatch = trimmed.match(/^([\w$]+)(\?)?:\s*([^;]+?)(?:\s*\/\*\*(.+?)\*\/)?$/);
+          if (propMatch) {
+            const [, propName, isOptional, propType, comment] = propMatch;
+            let typeName = propType.trim().replace(/[,;]$/, '');
+            let nestedProps = null;
+            // If typeName is a custom type, try to resolve recursively
+            if (/^[A-Z][A-Za-z0-9_]+$/.test(typeName) && typeName !== 'ReactNode' && typeName !== 'ReactElement') {
+              let typeContent = '';
+              let typeMatch = null;
+              if (fs.existsSync(parentFilePath)) {
+                typeContent = fs.readFileSync(parentFilePath, 'utf8');
+                let typeRegex = new RegExp(`interface\\s+${typeName}\\s*{([^}]+)}`);
+                typeMatch = typeRegex.exec(typeContent);
+                if (!typeMatch) {
+                  typeRegex = new RegExp(`type\\s+${typeName}\\s*=\\s*{([^}]+)}`);
+                  typeMatch = typeRegex.exec(typeContent);
+                }
+              }
+              if (!typeMatch) {
+                const importRegex = new RegExp(`import\\s+\\{\\s*${typeName}\\s*\\}\\s+from\\s+["'](.+?)["']`);
+                const importMatch = typeContent.match(importRegex);
+                if (importMatch) {
+                  let importPath = importMatch[1];
+                  let importFile = importPath;
+                  if (!importFile.endsWith('.ts') && !importFile.endsWith('.tsx')) {
+                    importFile = path.join(path.dirname(parentFilePath), importPath + '.ts');
+                    if (!fs.existsSync(importFile)) {
+                      importFile = path.join(path.dirname(parentFilePath), importPath + '.tsx');
+                    }
+                  } else {
+                    importFile = path.join(path.dirname(parentFilePath), importPath);
+                  }
+                  if (fs.existsSync(importFile)) {
+                    const importContent = fs.readFileSync(importFile, 'utf8');
+                    let typeRegex = new RegExp(`interface\\s+${typeName}\\s*{([^}]+)}`);
+                    typeMatch = typeRegex.exec(importContent);
+                    if (!typeMatch) {
+                      typeRegex = new RegExp(`type\\s+${typeName}\\s*=\\s*{([^}]+)}`);
+                      typeMatch = typeRegex.exec(importContent);
+                    }
+                    if (typeMatch && typeMatch[1]) {
+                      console.log(`[DEBUG] Found nested type '${typeName}' in imported file '${importFile}'. Recursively parsing...`);
+                      nestedProps = parsePropsContent(typeMatch[1], importFile);
+                    } else {
+                      console.log(`[DEBUG] Could not find definition for nested type '${typeName}' in imported file '${importFile}'.`);
+                    }
+                  } else {
+                    console.log(`[DEBUG] Imported file for nested type '${typeName}' does not exist: '${importFile}'`);
+                  }
+                } else {
+                  console.log(`[DEBUG] Could not find import for nested type '${typeName}' in file '${parentFilePath}'.`);
+                }
+              } else if (typeMatch && typeMatch[1]) {
+                console.log(`[DEBUG] Found nested type '${typeName}' in file '${parentFilePath}'. Recursively parsing...`);
+                nestedProps = parsePropsContent(typeMatch[1], parentFilePath);
+              }
+            }
+            props[propName] = {
+              name: propName,
+              type: { name: typeName },
+              required: !isOptional,
+              description: comment?.trim() || generatePropDescription(propName, typeName),
+              defaultValue: null,
+              ...(nestedProps ? { nestedProps } : {})
+            };
+          } else {
+            console.log(`[DEBUG] Could not parse prop definition: '${trimmed}'`);
+          }
+        });
       });
-      
+      console.log(`[DEBUG] Final parsed props object:`, props);
       return props;
     }
 
@@ -659,15 +1072,153 @@ class RepositoryWideExtractor {
       return 'component';
     }
 
-    // Main processing loop
-    files.forEach((file, index) => {
+    // ========================================
+    // PROCESS COMPONENT GROUPS (Smart Aggregation)
+    // ========================================
+    console.log(`\n🔧 Processing ${componentGroups.size} component groups...`);
+    
+    componentGroups.forEach((group, dir) => {
+      try {
+        console.log(`\n📦 Processing component group: ${group.componentName}`);
+        
+        // Create aggregated component object
+        const aggregatedComponent = {
+          id: group.componentName,
+          name: group.componentName,
+          directory: path.relative(repoRoot, group.directory),
+          aggregationType: 'multi-file',  // Mark as aggregated component
+          files: {},
+          raw: {},
+          props: {},
+          interfaces: [],
+          types: [],
+          enums: [],
+          styles: null,
+          exports: [],
+          description: "",
+          features: [],
+          extractionMethod: 'aggregated'
+        };
+        
+        // Process component file (main file)
+        if (group.files.component) {
+          const componentContent = fs.readFileSync(group.files.component, 'utf8');
+          aggregatedComponent.files.component = path.relative(repoRoot, group.files.component);
+          aggregatedComponent.raw.component = componentContent;
+          
+          console.log(`   ✅ Component file: ${path.basename(group.files.component)}`);
+          
+          // Extract props from component
+          try {
+            const docs = parser.parse ? parser.parse(group.files.component) : parser(group.files.component) || [];
+            if (docs.length > 0 && docs[0].props) {
+              aggregatedComponent.props = docs[0].props;
+              console.log(`      📋 Extracted ${Object.keys(docs[0].props).length} props from parser`);
+            }
+          } catch (e) {
+            // Fallback: manual extraction
+            const extracted = extractPropsFromContent(componentContent, group.componentName, group.files.component);
+            aggregatedComponent.props = extractDefaultValues(componentContent, extracted.props);
+            if (extracted.importedInterfaceCode) {
+              aggregatedComponent.raw.importedInterface = extracted.importedInterfaceCode;
+            }
+            console.log(`      📋 Manually extracted ${Object.keys(aggregatedComponent.props).length} props`);
+          }
+          
+          // Extract description
+          aggregatedComponent.description = extractComponentDescription(componentContent, group.componentName);
+          
+          // Detect features
+          if (componentContent.includes('forwardRef')) aggregatedComponent.features.push('ref-forwarding');
+          if (componentContent.includes('useState')) aggregatedComponent.features.push('stateful');
+          if (componentContent.includes('memo')) aggregatedComponent.features.push('memoized');
+          if (componentContent.includes('useEffect')) aggregatedComponent.features.push('effects');
+          
+          aggregatedComponent.componentType = detectComponentType(componentContent);
+        }
+        
+        // Process interface file
+        if (group.files.interface) {
+          const interfaceContent = fs.readFileSync(group.files.interface, 'utf8');
+          aggregatedComponent.files.interface = path.relative(repoRoot, group.files.interface);
+          aggregatedComponent.raw.interface = interfaceContent;
+          
+          const extracted = this.extractInterfacesFromFile(interfaceContent, group.files.interface);
+          aggregatedComponent.interfaces = extracted.interfaces;
+          aggregatedComponent.types = extracted.types;
+          aggregatedComponent.enums = extracted.enums;
+          
+          console.log(`   ✅ Interface file: ${path.basename(group.files.interface)}`);
+          console.log(`      📐 Found ${extracted.interfaces.length} interfaces, ${extracted.types.length} types, ${extracted.enums.length} enums`);
+        }
+        
+        // Process style file
+        if (group.files.style) {
+          const styleContent = fs.readFileSync(group.files.style, 'utf8');
+          aggregatedComponent.files.style = path.relative(repoRoot, group.files.style);
+          aggregatedComponent.raw.style = styleContent;
+          
+          aggregatedComponent.styles = this.extractStylesFromFile(styleContent, group.files.style);
+          
+          console.log(`   ✅ Style file: ${path.basename(group.files.style)} (${aggregatedComponent.styles.type || 'css-in-js'})`);
+        }
+        
+        // Process index file
+        if (group.files.index) {
+          const indexContent = fs.readFileSync(group.files.index, 'utf8');
+          aggregatedComponent.files.index = path.relative(repoRoot, group.files.index);
+          aggregatedComponent.raw.index = indexContent;
+          
+          // Extract exports from index
+          const exportMatches = indexContent.match(/export\s+\{([^}]+)\}/g);
+          if (exportMatches) {
+            exportMatches.forEach(exp => {
+              const items = exp.match(/\w+/g).filter(w => w !== 'export');
+              aggregatedComponent.exports.push(...items);
+            });
+          }
+          
+          console.log(`   ✅ Index file: exports ${aggregatedComponent.exports.length} items`);
+        }
+        
+        // Add to components list
+        components.push(aggregatedComponent);
+        console.log(`   ✅ Aggregated component "${group.componentName}" with ${Object.keys(aggregatedComponent.files).length} files`);
+        
+      } catch (err) {
+        console.error(`   ❌ Error processing component group ${group.componentName}:`, err.message);
+        debugInfo.errors.push({
+          directory: path.relative(repoRoot, group.directory),
+          error: err.message
+        });
+      }
+    });
+
+    // ========================================
+    // PROCESS STANDALONE FILES
+    // ========================================
+    console.log(`\n🔧 Processing ${standaloneFiles.length} standalone files...`);
+    
+    // Main processing loop for standalone files
+    standaloneFiles.forEach((file, index) => {
+      // Skip index.ts and index.tsx files (they're just re-exports)
+      const basename = path.basename(file);
+      if (basename === 'index.ts' || basename === 'index.tsx') {
+        console.log(`\\n⏩ Skipped standalone (${index + 1}/${standaloneFiles.length}): index file - ${path.relative(repoRoot, file)}`);
+        debugInfo.skippedFiles.push({
+          file: path.relative(repoRoot, file),
+          reason: 'index.ts/tsx file (re-export only)'
+        });
+        return;
+      }
+      
       processedFiles++;
       
       try {
         const fileContent = fs.readFileSync(file, "utf8");
         const relativePath = path.relative(repoRoot, file);
         
-        console.log(`\\n📄 Processing (${index + 1}/${files.length}): ${relativePath}`);
+        console.log(`\\n📄 Processing standalone (${index + 1}/${standaloneFiles.length}): ${relativePath}`);
         
         // Check if it's a React component
         if (!isReactComponent(fileContent, file)) {
@@ -693,10 +1244,10 @@ class RepositoryWideExtractor {
         } catch (parseError) {
           console.log(`   ⚠️  Automatic parser failed: ${parseError.message.substring(0, 100)}...`);
         }
-        
+
         if (!docs || docs.length === 0) {
           console.log(`   🛠️  Using manual extraction`);
-          
+
           const componentName = getComponentName({}, file);
           let component = {
             id: `${file}::${componentName}`,
@@ -704,58 +1255,64 @@ class RepositoryWideExtractor {
             file: path.relative(process.cwd(), file),
             props: {},
             description: "",
-            raw: fileContent.slice(0, 4000),
+            raw: fileContent,  // Full source code (was: slice(0, 4000))
             extractionMethod: 'manual',
             directory: path.dirname(relativePath)
           };
-          
-          // Extract props
-          const extractedProps = extractPropsFromContent(fileContent, componentName);
-          component.props = extractDefaultValues(fileContent, extractedProps);
+
+          // Extract props (pass file path as third argument)
+          const extracted = extractPropsFromContent(fileContent, componentName, file);
+          component.props = extractDefaultValues(fileContent, extracted.props);
+          if (extracted.importedInterfaceCode) {
+            component.interfaceCode = extracted.importedInterfaceCode;
+          }
           console.log(`      📋 Extracted ${Object.keys(component.props).length} props`);
-          
+
           // Extract description
           component.description = extractComponentDescription(fileContent, componentName);
           console.log(`      📝 Description: ${component.description.substring(0, 80)}...`);
-          
+
           // Add metadata
           component.componentType = detectComponentType(fileContent);
           component.features = [];
           if (fileContent.includes('forwardRef')) component.features.push('ref-forwarding');
           if (fileContent.includes('useState')) component.features.push('stateful');
           if (fileContent.includes('memo')) component.features.push('memoized');
-          
+
           components.push(component);
         } else {
           // Process automatic extraction results
           docs.forEach((doc, docIndex) => {
             const nameCandidate = getComponentName(doc, file);
-            
+
             console.log(`   🔧 Processing automatic component: ${nameCandidate}`);
-            
+
             let component = {
               id: `${file}::${nameCandidate}`,
               name: nameCandidate,
               file: path.relative(process.cwd(), file),
               props: doc.props || {},
               description: doc.description || "",
-              raw: fileContent.slice(0, 4000),
+              raw: fileContent,  // Full source code (was: slice(0, 4000))
               extractionMethod: 'automatic',
               exportName: doc.exportName,
               tags: doc.tags || {},
               directory: path.dirname(relativePath)
             };
-            
+
             // Enhance with manual extraction if needed
             if (Object.keys(component.props).length === 0) {
-              const extractedProps = extractPropsFromContent(fileContent, nameCandidate);
-              component.props = extractDefaultValues(fileContent, extractedProps);
+              const extracted = extractPropsFromContent(fileContent, nameCandidate, file);
+              component.props = extractDefaultValues(fileContent, extracted.props);
+              if (extracted.importedInterfaceCode) {
+                component.interfaceCode = extracted.importedInterfaceCode;
+              }
             }
-            
+
             if (!component.description || component.description.length < 5) {
               component.description = extractComponentDescription(fileContent, nameCandidate);
             }
-            
+
             // Add metadata
             component.componentType = detectComponentType(fileContent);
             component.features = [];
@@ -763,7 +1320,7 @@ class RepositoryWideExtractor {
             if (fileContent.includes('useState')) component.features.push('stateful');
             if (fileContent.includes('memo')) component.features.push('memoized');
             if (fileContent.includes('useEffect')) component.features.push('effects');
-            
+
             console.log(`      📋 Final props count: ${Object.keys(component.props).length}`);
             components.push(component);
           });
@@ -778,129 +1335,86 @@ class RepositoryWideExtractor {
       }
     });
 
-    // Post-processing and analysis
-    components.sort((a, b) => a.name.localeCompare(b.name));
-
-    // Analyze component distribution
-    const componentsByDirectory = {};
-    components.forEach(comp => {
-      const dir = comp.directory || 'root';
-      const topDir = dir.split('/')[0] || 'root';
-      componentsByDirectory[topDir] = (componentsByDirectory[topDir] || 0) + 1;
-    });
-
-    const summary = {
-      totalFiles: processedFiles,
-      totalComponents: components.length,
-      componentsWithProps: components.filter(c => Object.keys(c.props || {}).length > 0).length,
-      componentsWithDescription: components.filter(c => c.description && c.description.length > 10).length,
-      averagePropsPerComponent: components.length > 0 ? 
-        (components.reduce((sum, c) => sum + Object.keys(c.props || {}).length, 0) / components.length).toFixed(1) : 0,
-      skippedNoExports,
-      skippedNonComponents,
-      extractionMethods: {
-        automatic: components.filter(c => c.extractionMethod === 'automatic').length,
-        manual: components.filter(c => c.extractionMethod === 'manual').length
-      },
-      componentTypes: {
-        functional: components.filter(c => c.componentType === 'functional').length,
-        forwardRef: components.filter(c => c.componentType === 'forwardRef').length,
-        class: components.filter(c => c.componentType === 'class').length,
-        memoized: components.filter(c => c.componentType === 'memoized').length
-      },
-      componentsByDirectory,
-      topDirectories: Object.keys(componentsByDirectory).sort((a, b) => 
-        componentsByDirectory[b] - componentsByDirectory[a]
-      )
-    };
-
-    // Summary output
-    console.log(`\n🎉 ========== REPOSITORY-WIDE EXTRACTION COMPLETE ==========`);
-    console.log(`📁 Repository: ${path.basename(repoRoot)}`);
-    console.log(`🔍 Files scanned: ${files.length}`);
-    console.log(`📄 Files processed: ${summary.totalFiles}`);
-    console.log(`⚛️  Total components found: ${summary.totalComponents}`);
-    console.log(`📋 Components with props: ${summary.componentsWithProps} (${((summary.componentsWithProps/summary.totalComponents)*100).toFixed(1)}%)`);
-    console.log(`📝 Components with descriptions: ${summary.componentsWithDescription} (${((summary.componentsWithDescription/summary.totalComponents)*100).toFixed(1)}%)`);
-    console.log(`📊 Average props per component: ${summary.averagePropsPerComponent}`);
-
-    console.log(`\n📂 Components by directory:`);
-    Object.entries(componentsByDirectory)
-      .sort((a, b) => b[1] - a[1])
-      .forEach(([dir, count]) => {
-        console.log(`   📁 ${dir}: ${count} components`);
-      });
-
-    console.log(`\n🔧 Component types:`);
-    console.log(`   • Functional: ${summary.componentTypes.functional}`);
-    console.log(`   • ForwardRef: ${summary.componentTypes.forwardRef}`);
-    console.log(`   • Class: ${summary.componentTypes.class}`);
-    console.log(`   • Memoized: ${summary.componentTypes.memoized}`);
-
-    console.log(`\n🛠️  Extraction methods:`);
-    console.log(`   • Automatic: ${summary.extractionMethods.automatic}`);
-    console.log(`   • Manual: ${summary.extractionMethods.manual}`);
-
     // Write output file with logging
     try {
-      console.log(`\n� Attempting to write output to: ${outFile}`);
       fs.writeFileSync(outFile, JSON.stringify(components, null, 2));
       console.log(`📝 Successfully wrote output to: ${outFile}`);
+      
+      // Validation summary
+      console.log(`\n📊 EXTRACTION VALIDATION SUMMARY`);
+      console.log(`=================================`);
+      console.log(`Total components extracted: ${components.length}`);
+      
+      // Smart Aggregation statistics
+      const aggregatedComponents = components.filter(c => c.aggregationType === 'multi-file');
+      const standaloneComponents = components.filter(c => c.aggregationType !== 'multi-file');
+      
+      if (aggregatedComponents.length > 0) {
+        console.log(`\n📦 SMART AGGREGATION:`);
+        console.log(`   Aggregated components: ${aggregatedComponents.length}`);
+        console.log(`   Standalone components: ${standaloneComponents.length}`);
+        
+        console.log(`\n   Multi-file components:`);
+        aggregatedComponents.forEach(c => {
+          const fileTypes = Object.keys(c.files).join(', ');
+          const fileCount = Object.keys(c.files).length;
+          console.log(`   • ${c.name} (${fileCount} files: ${fileTypes})`);
+        });
+      }
+      
+      // Check for missing critical fields
+      const withoutRaw = components.filter(c => {
+        if (c.aggregationType === 'multi-file') {
+          return !c.raw || !c.raw.component;
+        }
+        return !c.raw || (typeof c.raw === 'string' && c.raw.trim().length === 0);
+      });
+      const withoutProps = components.filter(c => !c.props || Object.keys(c.props).length === 0);
+      const duplicateNames = {};
+      components.forEach(c => {
+        duplicateNames[c.name] = (duplicateNames[c.name] || 0) + 1;
+      });
+      const duplicates = Object.entries(duplicateNames).filter(([name, count]) => count > 1);
+      
+      if (withoutRaw.length > 0) {
+        console.log(`\n⚠️  WARNING: ${withoutRaw.length} components missing source code:`);
+        withoutRaw.slice(0, 5).forEach(c => console.log(`   - ${c.name} (${c.file})`));
+        if (withoutRaw.length > 5) console.log(`   ... and ${withoutRaw.length - 5} more`);
+      }
+      
+      if (withoutProps.length > 0) {
+        console.log(`\n📋 INFO: ${withoutProps.length} components with no props (might be utilities/hooks)`);
+      }
+      
+      if (duplicates.length > 0) {
+        console.log(`\n✅ DUPLICATE NAMES (Correctly handled with unique IDs):`);
+        duplicates.forEach(([name, count]) => {
+          const files = components.filter(c => c.name === name).map(c => c.file);
+          console.log(`   - "${name}" appears ${count} times:`);
+          files.forEach(f => console.log(`     • ${f}`));
+        });
+      }
+      
+      // Size statistics
+      const getTotalSize = (c) => {
+        if (c.aggregationType === 'multi-file') {
+          return Object.values(c.raw).reduce((sum, content) => sum + (content?.length || 0), 0);
+        }
+        return c.raw?.length || 0;
+      };
+      
+      const avgRawSize = components.reduce((sum, c) => sum + getTotalSize(c), 0) / components.length;
+      const maxRawSize = Math.max(...components.map(c => getTotalSize(c)));
+      console.log(`\n📏 Source code size:`);
+      console.log(`   Average: ${Math.round(avgRawSize)} characters`);
+      console.log(`   Maximum: ${maxRawSize} characters`);
+      
+      console.log(`\n✅ Extraction complete!`);
+      console.log(`=================================\n`);
     } catch (err) {
       console.error(`❌ Error writing output file: ${outFile}`);
       console.error(err);
     }
-
-    // Show top components for verification
-    if (components.length > 0) {
-      console.log(`\n🌟 Sample extracted components:`);
-      const topComponents = components
-        .filter(c => Object.keys(c.props || {}).length > 0)
-        .slice(0, 5);
-
-      topComponents.forEach((comp, index) => {
-        console.log(`   ${index + 1}. ${comp.name} (${comp.directory})`);
-        console.log(`      📋 ${Object.keys(comp.props).length} props`);
-        console.log(`      🔧 ${comp.componentType} component`);
-        console.log(`      📝 ${comp.description.substring(0, 60)}...`);
-      });
-
-      if (components.length > 5) {
-        console.log(`   ... and ${components.length - 5} more components`);
-      }
-    }
-
-    // Detection analysis
-    const detectedComponents = debugInfo.detectionResults.filter(r => r.isComponent);
-    const skippedComponents = debugInfo.detectionResults.filter(r => !r.isComponent);
-    
-    console.log(`\n🔍 Detection analysis:`);
-    console.log(`   ✅ Files detected as components: ${detectedComponents.length}`);
-    console.log(`   ❌ Files skipped: ${skippedComponents.length}`);
-    
-    if (detectedComponents.length > 0) {
-      const avgConfidence = detectedComponents.reduce((sum, r) => sum + r.confidence, 0) / detectedComponents.length;
-      console.log(`   📊 Average detection confidence: ${avgConfidence.toFixed(1)}`);
-    }
-    
-    // Show common skip reasons
-    if (skippedComponents.length > 0) {
-      const skipReasons = {};
-      skippedComponents.forEach(comp => {
-        skipReasons[comp.reason] = (skipReasons[comp.reason] || 0) + 1;
-      });
-      
-      console.log(`\n❌ Common reasons for skipping files:`);
-      Object.entries(skipReasons)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .forEach(([reason, count]) => {
-          console.log(`   • ${reason}: ${count} files`);
-        });
-    }
-    
-    console.log(`\n✨ Repository-wide extraction completed successfully!`);
-    console.log(`📊 Check the output file for complete component documentation.`);
   }
 }
 
