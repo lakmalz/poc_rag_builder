@@ -43,7 +43,7 @@ Check if all dependencies are installed correctly:
 ### Option A: Quick Build (Recommended)
 Simple pipeline without versioning - perfect for iterative development:
     
-    python3 build_index.py
+    python3 core/build_index.py
 
 This will:
     - Extract React components from source code
@@ -52,7 +52,7 @@ This will:
 
 Optional cleanup before build:
     
-    python3 build_index.py --clean
+    python3 core/build_index.py --clean
 
 Features:
     ✅ Simple and fast
@@ -64,7 +64,7 @@ Features:
 ### Option B: Full Build with Validation (Advanced)
 Complete pipeline with validation and versioning:
     
-    python3 rebuild_index.py
+    python3 core/rebuild_index.py
 
 This will:
     - Extract React components from source code
@@ -85,7 +85,7 @@ Features:
 ### Option C: Legacy Interactive Pipeline
 Run complete pipeline with interactive query interface:
     
-    python3 find_component.py
+    python3 core/find_component.py
 
 This will:
     - Extract React components from source code
@@ -108,7 +108,7 @@ Output: build-index/component_docs.json
 ### 2.2 INGEST & CHUNK
 Chunk extracted components into searchable pieces:
     
-    python3 ingest_components.py
+    python3 core/ingest_components.py
 
 Output: build-index/component_chunks.json
 
@@ -116,7 +116,7 @@ Output: build-index/component_chunks.json
 ### 2.3 INDEX (Store in ChromaDB)
 Index chunks into vector database:
     
-    python3 index_components.py
+    python3 core/index_components.py
 
 Output: build-index/chromadb/
 
@@ -127,9 +127,9 @@ Output: build-index/chromadb/
 ### 3.1 GET COMPONENT LIST
 
 #### List format (numbered, with file paths):
-    python3 query_cli.py list-components
+    python3 core/query_cli.py list-components
     # OR
-    python3 query_cli.py list-components --output-format list
+    python3 core/query_cli.py list-components --output-format list
 
 Output:
     Found 2 component(s):
@@ -138,7 +138,7 @@ Output:
 
 
 #### JSON format (structured data):
-    python3 query_cli.py list-components --output-format json
+    python3 core/query_cli.py list-components --output-format json
 
 Output:
     [
@@ -156,7 +156,7 @@ Output:
 
 
 #### Names only (simple list):
-    python3 query_cli.py list-components --output-format names
+    python3 core/query_cli.py list-components --output-format names
 
 Output:
     ProfilePage
@@ -167,7 +167,7 @@ Output:
 
 Retrieve complete component with all files (component, interfaces, styles):
     
-    python3 query_cli.py get-component-exact ProfilePage
+    python3 core/query_cli.py get-component-exact ProfilePage
 
 Output:
     📦 Component: ProfilePage
@@ -202,14 +202,14 @@ Output:
 
 Search for components using natural language:
     
-    python3 query_cli.py query-find-component "user profile form with edit mode" --k 5
+    python3 core/query_cli.py query-find-component "user profile form with edit mode" --k 5
 
 
 ## 4. INTERACTIVE MODE
 ------------------------------------------
 Interactive component browser with selection menu:
     
-    python3 find_component.py
+    python3 core/find_component.py
 
 Features:
     - Lists all components
@@ -249,19 +249,24 @@ Settings:
 Clear and rebuild the entire index:
     
     rm -rf build-index/
-    python3 find_component.py
+    python3 core/find_component.py
 
 
 ## QUICK REFERENCE
 ------------------------------------------
-| Task                          | Command                                                |
-|-------------------------------|--------------------------------------------------------|
-| Full pipeline                 | python3 find_component.py                              |
-| Extract only                  | node scripts/code_extractor.js                         |
-| List components (list)        | python3 query_cli.py list-components                   |
-| List components (JSON)        | python3 query_cli.py list-components --output-format json |
-| List components (names only)  | python3 query_cli.py list-components --output-format names |
-| Get component by name         | python3 query_cli.py get-component-exact ProfilePage   |
-| Search components             | python3 query_cli.py query-find-component "search term" |
-| Interactive mode              | python3 find_component.py                              |
-| Rebuild index                 | rm -rf build-index/ && python3 find_component.py       |
+| Task                          | Command                                                    |
+|-------------------------------|------------------------------------------------------------|
+| Full pipeline                 | python3 core/find_component.py                             |
+| Quick build                   | python3 core/build_index.py                                |
+| Quick build with clean        | python3 core/build_index.py --clean                        |
+| Full build with validation    | python3 core/rebuild_index.py                              |
+| Extract only                  | node scripts/code_extractor.js                             |
+| Chunk only                    | python3 core/ingest_components.py                          |
+| Index only                    | python3 core/index_components.py                           |
+| List components (list)        | python3 core/query_cli.py list-components                  |
+| List components (JSON)        | python3 core/query_cli.py list-components --output-format json |
+| List components (names only)  | python3 core/query_cli.py list-components --output-format names |
+| Get component by name         | python3 core/query_cli.py get-component-exact ProfilePage  |
+| Search components             | python3 core/query_cli.py query-find-component "search term" |
+| Interactive mode              | python3 core/find_component.py                             |
+| Rebuild index                 | rm -rf build-index/ && python3 core/find_component.py      |

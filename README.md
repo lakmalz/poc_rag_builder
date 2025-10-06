@@ -24,6 +24,51 @@ This RAG builder processes React codebases to create a searchable index of compo
 ### Source Repository
 Original React codebase: [web-extensions](https://github.com/Ricy137/web-extensions/tree/main)
 
+### Target Repository Location
+
+**Important:** This RAG builder expects the target React codebase to be located in a specific directory:
+
+```
+poc_rag_builder/
+└── web-extensions/          ← Your React repository goes here
+    ├── src/
+    │   └── components/
+    ├── package.json
+    └── ...
+```
+
+**Setup Instructions:**
+
+1. **Clone the target repository** into the project root:
+   ```bash
+   cd poc_rag_builder
+   git clone https://github.com/Ricy137/web-extensions.git
+   ```
+
+2. **Or use a different repository name:**
+   - Clone your React project into this folder
+   - Update `config/extraction.config.js`:
+     ```javascript
+     repository: {
+       root: "your-repo-name"  // Change this to match your folder name
+     }
+     ```
+
+**Why this structure?**
+- The extractor looks for the repository in a subfolder (default: `web-extensions`)
+- This keeps the RAG builder tools separate from the target codebase
+- You can easily switch between different React projects by changing the `root` setting
+
+**Example with different repositories:**
+```
+poc_rag_builder/
+├── web-extensions/          ← Original example repo
+├── my-react-app/           ← Your custom React app
+└── another-project/        ← Another React project
+```
+
+Just update the config to point to whichever one you want to index!
+
 ---
 
 ## 🔄 Pipeline Architecture
@@ -117,12 +162,12 @@ pip3 list | grep sentence-transformers
 Simple pipeline without versioning - perfect for iterative development:
 
 ```bash
-python3 build_index.py
+python3 core/build_index.py
 ```
 
 **Optional cleanup before build:**
 ```bash
-python3 build_index.py --clean
+python3 core/build_index.py --clean
 ```
 
 **Features:**
@@ -143,7 +188,7 @@ python3 build_index.py --clean
 Complete pipeline with validation and versioning:
 
 ```bash
-python3 rebuild_index.py
+python3 core/rebuild_index.py
 ```
 
 **Features:**
@@ -168,7 +213,7 @@ python3 rebuild_index.py
 Run complete pipeline with interactive query interface:
 
 ```bash
-python3 find_component.py
+python3 core/find_component.py
 ```
 
 **This command will:**
@@ -196,7 +241,7 @@ node scripts/code_extractor.js
 Chunk extracted components into searchable pieces:
 
 ```bash
-python3 ingest_components.py
+python3 core/ingest_components.py
 ```
 
 **Output:** `build-index/component_chunks.json`
@@ -206,7 +251,7 @@ python3 ingest_components.py
 Index chunks into vector database:
 
 ```bash
-python3 index_components.py
+python3 core/index_components.py
 ```
 
 **Output:** `build-index/chromadb/`
@@ -219,9 +264,9 @@ python3 index_components.py
 
 **List format (numbered, with file paths):**
 ```bash
-python3 query_cli.py list-components
+python3 core/query_cli.py list-components
 # OR
-python3 query_cli.py list-components --output-format list
+python3 core/query_cli.py list-components --output-format list
 ```
 
 **Example output:**
@@ -233,7 +278,7 @@ Found 2 component(s):
 
 **JSON format (structured data):**
 ```bash
-python3 query_cli.py list-components --output-format json
+python3 core/query_cli.py list-components --output-format json
 ```
 
 **Example output:**
@@ -249,7 +294,7 @@ python3 query_cli.py list-components --output-format json
 
 **Names only (simple list):**
 ```bash
-python3 query_cli.py list-components --output-format names
+python3 core/query_cli.py list-components --output-format names
 ```
 
 **Example output:**
@@ -265,7 +310,7 @@ CustomDropdown
 Retrieve complete component with all files (component, interfaces, styles):
 
 ```bash
-python3 query_cli.py get-component-exact ProfilePage
+python3 core/query_cli.py get-component-exact ProfilePage
 ```
 
 **Example output:**
@@ -305,7 +350,7 @@ const useProfilePageStyles = makeStyles({...});
 Search for components using natural language:
 
 ```bash
-python3 query_cli.py query-find-component "user profile form with edit mode" --k 5
+python3 core/query_cli.py query-find-component "user profile form with edit mode" --k 5
 ```
 
 **Parameters:**
@@ -319,7 +364,7 @@ python3 query_cli.py query-find-component "user profile form with edit mode" --k
 Interactive component browser with selection menu:
 
 ```bash
-python3 find_component.py
+python3 core/find_component.py
 ```
 
 **Features:**
@@ -388,55 +433,69 @@ Clear and rebuild the entire index:
 
 ```bash
 rm -rf build-index/
-python3 build_index.py
+python3 core/build_index.py
 ```
 
 ---
 
 ## 📚 Quick Reference
 
-| Task                          | Command                                                      |
-|-------------------------------|--------------------------------------------------------------|
-| **Quick build** (recommended) | `python3 build_index.py`                                     |
-| **Quick build with clean**    | `python3 build_index.py --clean`                             |
-| **Full build with validation**| `python3 rebuild_index.py`                                   |
-| **Interactive pipeline**      | `python3 find_component.py`                                  |
-| **Extract only**              | `node scripts/code_extractor.js`                             |
-| **Chunk only**                | `python3 ingest_components.py`                               |
-| **Index only**                | `python3 index_components.py`                                |
-| **List components (list)**    | `python3 query_cli.py list-components`                       |
-| **List components (JSON)**    | `python3 query_cli.py list-components --output-format json`  |
-| **List components (names)**   | `python3 query_cli.py list-components --output-format names` |
-| **Get component by name**     | `python3 query_cli.py get-component-exact ProfilePage`       |
-| **Search components**         | `python3 query_cli.py query-find-component "search term"`    |
-| **Interactive mode**          | `python3 find_component.py`                                  |
-| **Rebuild index**             | `rm -rf build-index/ && python3 build_index.py`              |
+| Task                          | Command                                                         |
+|-------------------------------|-----------------------------------------------------------------|
+| **Quick build** (recommended) | `python3 core/build_index.py`                                   |
+| **Quick build with clean**    | `python3 core/build_index.py --clean`                           |
+| **Full build with validation**| `python3 core/rebuild_index.py`                                 |
+| **Interactive pipeline**      | `python3 core/find_component.py`                                |
+| **Extract only**              | `node scripts/code_extractor.js`                                |
+| **Chunk only**                | `python3 core/ingest_components.py`                             |
+| **Index only**                | `python3 core/index_components.py`                              |
+| **List components (list)**    | `python3 core/query_cli.py list-components`                     |
+| **List components (JSON)**    | `python3 core/query_cli.py list-components --output-format json`|
+| **List components (names)**   | `python3 core/query_cli.py list-components --output-format names`|
+| **Get component by name**     | `python3 core/query_cli.py get-component-exact ProfilePage`     |
+| **Search components**         | `python3 core/query_cli.py query-find-component "search term"`  |
+| **Interactive mode**          | `python3 core/find_component.py`                                |
+| **Rebuild index**             | `rm -rf build-index/ && python3 core/build_index.py`            |
 
 ---
 
 ## 📂 Project Structure
 
 ```
-poc_rag_builder/
+poc_rag_builder/                  # Main RAG builder project
+├── web-extensions/               # ← Target React repository (clone here!)
+│   ├── src/
+│   │   └── components/          # React components to be indexed
+│   ├── package.json
+│   └── tsconfig.json
+├── core/                         # Core Python modules
+│   ├── build_index.py           # Quick build pipeline
+│   ├── rebuild_index.py         # Full build with validation
+│   ├── ingest_components.py     # Chunking processor
+│   ├── index_components.py      # ChromaDB indexer
+│   ├── query_cli.py             # Query CLI tool
+│   ├── find_component.py        # Interactive component browser
+│   ├── pipeline_cli.py          # Pipeline utilities
+│   └── embedding_utils.py       # Embedding utilities
 ├── config/
-│   ├── extraction.config.js      # Extraction settings
+│   ├── extraction.config.js      # Extraction settings (set repository.root here)
 │   └── chunking.config.py        # Chunking & indexing settings
 ├── scripts/
 │   └── code_extractor.js         # Node.js component extractor
-├── build-index/
+├── build-index/                  # Generated output directory
 │   ├── component_docs.json       # Extracted components
 │   ├── component_chunks.json     # Chunked components
 │   └── chromadb/                 # Vector database
-├── build_index.py                # Quick build pipeline
-├── rebuild_index.py              # Full build with validation
-├── ingest_components.py          # Chunking processor
-├── index_components.py           # ChromaDB indexer
-├── query_cli.py                  # Query CLI tool
-├── find_component.py             # Interactive component browser
 ├── requirements.txt              # Python dependencies
 ├── package.json                  # Node.js dependencies
 └── README.md                     # This file
 ```
+
+**Key Notes:**
+- `web-extensions/` is your **target React repository** - clone it into this folder
+- `config/extraction.config.js` sets `repository.root: "web-extensions"` to point to this folder
+- Change the root path if your repository has a different name
+- The RAG builder will scan the repository for components based on your config
 
 ---
 
@@ -465,7 +524,3 @@ If you encounter import errors:
 ## 📝 License
 
 This project is for educational and development purposes.
-
-## 🙏 Credits
-
-Original React codebase: [web-extensions](https://github.com/Ricy137/web-extensions) by Ricy137
