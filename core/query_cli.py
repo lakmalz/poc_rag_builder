@@ -7,8 +7,43 @@ import typer
 from typing import List, Dict, Any
 import re
 import requests
+import sys
+import time
+import threading
 
 app = typer.Typer()
+
+class Spinner:
+    """Simple CLI spinner for showing progress"""
+    def __init__(self, message="Loading..."):
+        self.message = message
+        self.spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+        self.running = False
+        self.thread = None
+    
+    def spin(self):
+        """Spin animation loop"""
+        idx = 0
+        while self.running:
+            sys.stdout.write(f'\r{self.spinner_chars[idx]} {self.message}')
+            sys.stdout.flush()
+            idx = (idx + 1) % len(self.spinner_chars)
+            time.sleep(0.1)
+        # Clear the spinner line
+        sys.stdout.write('\r' + ' ' * (len(self.message) + 3) + '\r')
+        sys.stdout.flush()
+    
+    def start(self):
+        """Start the spinner"""
+        self.running = True
+        self.thread = threading.Thread(target=self.spin)
+        self.thread.start()
+    
+    def stop(self):
+        """Stop the spinner"""
+        self.running = False
+        if self.thread:
+            self.thread.join()
 
 class ComponentQueryer:
     def __init__(self, collection_name="component_chunks", model_name="all-MiniLM-L6-v2"):
@@ -481,10 +516,20 @@ def list_components(output_format: str = "list", return_string: bool = False):
     Returns:
         String representation or prints component list
     """
+    spinner = None
     try:
         import json
         
+        # Start spinner only if not returning string
+        if not return_string:
+            spinner = Spinner("Loading components from database...")
+            spinner.start()
+        
         component_map, real_components = get_components_data()
+        
+        # Stop spinner before showing results
+        if spinner:
+            spinner.stop()
         
         if not real_components:
             msg = "No components found."
@@ -535,6 +580,9 @@ def list_components(output_format: str = "list", return_string: bool = False):
             return real_components
             
     except Exception as e:
+        # Make sure to stop spinner on error
+        if spinner:
+            spinner.stop()
         error_msg = f"Error listing components: {e}"
         if return_string:
             return error_msg
@@ -556,8 +604,14 @@ def get_component_exact(component_name: str, return_string: bool = False):
     Returns:
         String representation of component details
     """
+    spinner = None
     try:
         import json
+        
+        # Start spinner only if not returning string
+        if not return_string:
+            spinner = Spinner(f"Loading component '{component_name}'...")
+            spinner.start()
         
         # Get data from ChromaDB instead of JSON file
         collection = queryer._get_collection()
@@ -567,6 +621,10 @@ def get_component_exact(component_name: str, return_string: bool = False):
             where={"component_name": component_name},
             include=["metadatas", "documents"]
         )
+        
+        # Stop spinner before showing results
+        if spinner:
+            spinner.stop()
         
         if not results['ids']:
             msg = f"No component found with exact name: {component_name}"
@@ -645,6 +703,9 @@ def get_component_exact(component_name: str, return_string: bool = False):
         print(output_str)
             
     except Exception as e:
+        # Make sure to stop spinner on error
+        if spinner:
+            spinner.stop()
         error_msg = f"Error retrieving component: {e}"
         if return_string:
             return error_msg
