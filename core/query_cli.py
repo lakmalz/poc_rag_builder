@@ -522,8 +522,11 @@ def list_components(output_format: str = "list", return_string: bool = False):
             output_lines.append(f"\nFound {len(real_components)} component(s):\n")
             for idx, name in enumerate(real_components):
                 file_path = component_map[name].get('file', '')
-                file_display = '/'.join(file_path.split('/')[-3:]) if file_path else ''
-                output_lines.append(f"[{idx+1}] {name:30s} ({file_display})")
+                if file_path:
+                    file_display = '/'.join(file_path.split('/')[-3:])
+                    output_lines.append(f"[{idx+1}] {name:30s} ({file_display})")
+                else:
+                    output_lines.append(f"[{idx+1}] {name}")
             
             output_str = "\n".join(output_lines)
             if return_string:
