@@ -409,9 +409,23 @@ def is_real_component(name: str, chunk_data: dict) -> bool:
     if name.startswith('render') or name.startswith('Render'):
         return False
     
-    # Skip if file is in utils/helpers directory
+    # Skip style files (*.style.ts, *.styles.ts, *.styled.ts)
     file_path = chunk_data.get('file', '').lower()
+    style_file_patterns = ['.style.ts', '.styles.ts', '.styled.ts', '.style.js', '.styles.js', '.styled.js']
+    if any(pattern in file_path for pattern in style_file_patterns):
+        return False
+    
+    # Skip if file is in utils/helpers directory
     if '/utils/' in file_path or '/helpers/' in file_path:
+        return False
+    
+    # Skip interface/type files (*.interface.ts, *.types.ts)
+    interface_file_patterns = ['.interface.ts', '.types.ts', '.interface.js', '.types.js']
+    if any(pattern in file_path for pattern in interface_file_patterns):
+        return False
+    
+    # Skip index files (they're just re-exports)
+    if file_path.endswith('index.ts') or file_path.endswith('index.tsx') or file_path.endswith('index.js') or file_path.endswith('index.jsx'):
         return False
     
     # Must start with uppercase (component convention)
