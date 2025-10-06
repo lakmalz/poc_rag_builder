@@ -22,7 +22,7 @@ This RAG builder processes React codebases to create a searchable index of compo
 - **CLI tools** for querying and retrieving components
 
 ### Source Repository
-Original React codebase: [web-extensions](https://github.com/Ricy137/web-extensions/tree/main)
+Original React codebase: [web-extensions](currently url not available, you can use any react component)
 
 ### Target Repository Location
 
@@ -42,7 +42,7 @@ poc_rag_builder/
 1. **Clone the target repository** into the project root:
    ```bash
    cd poc_rag_builder
-   git clone https://github.com/Ricy137/web-extensions.git
+   currently not available
    ```
 
 2. **Or use a different repository name:**
