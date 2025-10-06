@@ -534,7 +534,7 @@ python3 server/api_server.py
 - `GET /api/components/{name}` - Get specific component
 - `POST /api/components/search` - Semantic search
 
-For complete API documentation with examples, see [FASTAPI-DOCUMENTATION.md](FASTAPI-DOCUMENTATION.md) or [server/README.md](server/README.md).
+For complete API documentation with examples, see [server/README.md](server/README.md).
 
 ---
 
