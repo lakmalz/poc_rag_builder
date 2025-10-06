@@ -35,7 +35,7 @@ def run_chunking():
     print("📦 STEP 2: Chunking components...")
     print("=" * 60)
     
-    result = subprocess.run(["python3", "ingest_components.py"])
+    result = subprocess.run(["python3", "core/ingest_components.py"])
     
     if result.returncode != 0:
         print("❌ Chunking failed")
@@ -50,7 +50,7 @@ def run_indexing():
     print("🔍 STEP 3: Indexing into ChromaDB...")
     print("=" * 60)
     
-    result = subprocess.run(["python3", "index_components.py"])
+    result = subprocess.run(["python3", "core/index_components.py"])
     
     if result.returncode != 0:
         print("❌ Indexing failed")
@@ -122,8 +122,8 @@ def main():
     print("✅ BUILD COMPLETE!")
     print("=" * 60)
     print("\n💡 Next steps:")
-    print("   python3 query_cli.py list-components")
-    print("   python3 query_cli.py get-component-exact ProfilePage")
+    print("   python3 core/query_cli.py list-components")
+    print("   python3 core/query_cli.py get-component-exact `ProfilePageComponent`")
     print("\n")
     
     sys.exit(0)

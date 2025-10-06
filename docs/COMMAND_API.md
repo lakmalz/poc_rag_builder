@@ -14,7 +14,7 @@ The `query_cli.py` module now provides **3 separate command methods** that can b
 
 **Command**:
 ```bash
-python3 query_cli.py list-components [--output-format FORMAT]
+python3 core/query_cli.py list-components [--output-format FORMAT]
 ```
 
 **Parameters**:
@@ -27,13 +27,13 @@ python3 query_cli.py list-components [--output-format FORMAT]
 
 ```bash
 # List format (default)
-python3 query_cli.py list-components
+python3 core/query_cli.py list-components
 
 # JSON format
-python3 query_cli.py list-components --output-format json
+python3 core/query_cli.py list-components --output-format json
 
 # Names only
-python3 query_cli.py list-components --output-format names
+python3 core/query_cli.py list-components --output-format names
 ```
 
 **Output Examples**:
@@ -299,7 +299,7 @@ Ensure this file exists before calling these commands (run the pipeline first).
 
 ```bash
 # Step 1: List all components (JSON for parsing)
-python3 query_cli.py list-components --output-format json > components.json
+python3 core/query_cli.py list-components --output-format json > components.json
 
 # Step 2: Extract component names programmatically
 cat components.json | jq -r '.[].name'

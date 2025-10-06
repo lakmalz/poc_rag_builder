@@ -6,7 +6,7 @@ from chromadb.config import Settings
 
 
 class ComponentIndexer:
-    PROJECT_ROOT = Path(__file__).parent
+    PROJECT_ROOT = Path(__file__).parent.parent  # Go up from core/ to project root
     BUILD_INDEX_PATH = PROJECT_ROOT / "build-index"
     CHUNKS_FILE = BUILD_INDEX_PATH / "component_chunks.json"
     CHROMA_DB_PATH = BUILD_INDEX_PATH / "chromadb"
@@ -146,7 +146,7 @@ class ComponentIndexer:
     @staticmethod
     def build_index_static(model_name="all-MiniLM-L6-v2", batch_size=64):
         """Static method to maintain compatibility with original API. Auto-create chunks if missing."""
-        chunks_file = Path(__file__).parent / "build-index" / "component_chunks.json"
+        chunks_file = Path(__file__).parent.parent / "build-index" / "component_chunks.json"  # Go up from core/
         if not chunks_file.exists():
             print(f"Chunks file not found: {chunks_file}")
             print("Running chunk creation...")

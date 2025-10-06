@@ -12,7 +12,7 @@ app = typer.Typer()
 
 class ComponentQueryer:
     def __init__(self, collection_name="component_chunks", model_name="all-MiniLM-L6-v2"):
-        self.PROJECT_ROOT = Path(__file__).parent
+        self.PROJECT_ROOT = Path(__file__).parent.parent  # Go up from core/ to project root
         self.BUILD_INDEX_PATH = self.PROJECT_ROOT / "build-index"
         self.CHROMA_DB_PATH = self.BUILD_INDEX_PATH / "chromadb"
         self.collection_name = collection_name

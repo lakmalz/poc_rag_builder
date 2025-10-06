@@ -96,13 +96,13 @@ full_source_results = collection.get(
 
 ```bash
 # Test 1: List components (names)
-$ python3 query_cli.py list-components --output-format names
+$ python3 core/query_cli.py list-components --output-format names
 Page
 ProfilePage.component
 ✅ PASS
 
 # Test 2: List components (default format)
-$ python3 query_cli.py list-components
+$ python3 core/query_cli.py list-components
 Found 2 component(s):
 [1] Page                           (app/button/page.tsx)
 [2] ProfilePage.component          (components/ProfilePage/ProfilePage.component.tsx)

@@ -24,7 +24,7 @@ def ingest_and_chunk():
         print(f"✅ Ingestion skipped: {component_chunk_path} already exists.")
         return True
     print("Step 2: Ingesting and chunking...")
-    result = subprocess.run(["python3", "ingest_components.py"])
+    result = subprocess.run(["python3", "core/ingest_components.py"])
     if result.returncode == 0:
         print("✅ Ingestion complete.")
         return True
@@ -37,7 +37,7 @@ def prompt_indexing():
     choice = input("Do you want to index the data store? (y/n): ").strip().lower()
     if choice == 'y':
         print("Step 3: Indexing data store...")
-        result = subprocess.run(["python3", "index_components.py"])
+        result = subprocess.run(["python3", "core/index_components.py"])
         if result.returncode == 0:
             print("✅ Indexing complete.")
         else:
@@ -50,7 +50,7 @@ def prompt_indexing():
 def prompt_query():
     question = input("\nPlease enter your question: ")
     print("\n🔎 Processing your query, please wait...")
-    subprocess.run(["python3", "query_cli.py", "query", question, "--k", "5", "--per-component", "10"])
+    subprocess.run(["python3", "core/query_cli.py", "query", question, "--k", "5", "--per-component", "10"])
 
 # Main pipeline
 def main():
