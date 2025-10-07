@@ -311,7 +311,7 @@ Quick iteration on extraction/chunking strategies
    - Increase batch_size
 
 3. Run full pipeline
-   python3 rebuild_index.py --clean
+   python3 core/build_index.py --clean
 
 4. Measure performance improvement
 ```

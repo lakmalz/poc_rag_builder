@@ -175,32 +175,7 @@ python3 core/build_index.py --clean
 
 ---
 
-#### Option B: Full Build with Validation (Advanced)
-
-Complete pipeline with validation and versioning:
-
-```bash
-python3 core/rebuild_index.py
-```
-
-**Features:**
-- ✅ Automatic validation at each step
-- ✅ Version control for build outputs
-- ✅ Rollback capability if validation fails
-- ✅ Archive previous builds automatically
-
-**This command will:**
-1. Extract React components from source code
-2. Validate extraction results
-3. Chunk the extracted components
-4. Validate chunking output
-5. Index chunks into ChromaDB
-6. Validate indexing success
-7. Archive successful builds with versioning
-
----
-
-#### Option C: Legacy Interactive Pipeline
+#### Option B: Interactive Pipeline
 
 Run complete pipeline with interactive query interface:
 
@@ -432,7 +407,6 @@ python3 core/build_index.py
 |-------------------------------|-----------------------------------------------------------------|
 | **Quick build** (recommended) | `python3 core/build_index.py`                                   |
 | **Quick build with clean**    | `python3 core/build_index.py --clean`                           |
-| **Full build with validation**| `python3 core/rebuild_index.py`                                 |
 | **Interactive pipeline**      | `python3 core/find_component.py`                                |
 | **Extract only**              | `node scripts/code_extractor.js`                                |
 | **Chunk only**                | `python3 core/ingest_components.py`                             |
@@ -457,8 +431,7 @@ poc_rag_builder/                  # Main RAG builder project
 │   ├── package.json
 │   └── tsconfig.json
 ├── core/                         # Core Python modules
-│   ├── build_index.py           # Quick build pipeline
-│   ├── rebuild_index.py         # Full build with validation
+│   ├── build_index.py           # Build pipeline (extract → chunk → index)
 │   ├── ingest_components.py     # Chunking processor
 │   ├── index_components.py      # ChromaDB indexer
 │   ├── query_cli.py             # Query CLI tool

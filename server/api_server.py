@@ -157,7 +157,6 @@ async def root():
         "docs": "/docs",
         "endpoints": {
             "build_index": "POST /api/index/build",
-            "rebuild_index": "POST /api/index/rebuild",
             "list_components": "GET /api/components",
             "get_component": "GET /api/components/{name}",
             "search": "POST /api/components/search",
@@ -271,72 +270,6 @@ async def build_index(request: BuildIndexRequest = Body(...)):
     except Exception as e:
         logger.error(f"Unexpected error during build: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error during build")
-
-@app.post("/api/index/rebuild", response_model=BuildIndexResponse, tags=["Indexing"])
-async def rebuild_index():
-    """
-    Rebuild the component index with validation
-    
-    This runs the full build pipeline with validation and versioning.
-    """
-    try:
-        logger.info("Starting index rebuild with validation")
-        # Change to project root
-        project_root = Path(__file__).parent.parent
-        
-        # Run the rebuild
-        result = subprocess.run(
-            ["python3", "core/rebuild_index.py"],
-            cwd=str(project_root),
-            capture_output=True,
-            text=True,
-            timeout=300  # 5 minute timeout
-        )
-        
-        if result.returncode != 0:
-            logger.error(f"Rebuild failed with code {result.returncode}: {result.stderr}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Rebuild failed: {result.stderr}"
-            )
-        
-        # Get statistics
-        try:
-            collection = queryer._get_collection()
-            chunks_count = collection.count()
-            
-            all_data = collection.get(
-                where={"chunk_type": "basic_info"},
-                include=["metadatas"]
-            )
-            components_count = len(set(
-                meta.get("component_name") 
-                for meta in all_data['metadatas']
-                if meta.get("component_name")
-            ))
-        except:
-            chunks_count = None
-            components_count = None
-        
-        logger.info(f"Rebuild completed: {components_count} components, {chunks_count} chunks")
-        return BuildIndexResponse(
-            success=True,
-            message="Index rebuilt successfully with validation",
-            components_indexed=components_count,
-            chunks_created=chunks_count
-        )
-        
-    except HTTPException:
-        raise
-    except subprocess.TimeoutExpired:
-        logger.error("Rebuild process timed out after 5 minutes")
-        raise HTTPException(status_code=504, detail="Rebuild process timed out")
-    except FileNotFoundError as e:
-        logger.error(f"Rebuild script not found: {e}")
-        raise HTTPException(status_code=500, detail="Rebuild script not found")
-    except Exception as e:
-        logger.error(f"Unexpected error during rebuild: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error during rebuild")
 
 # ============================================================================
 # Component Retrieval Endpoints
