@@ -98,7 +98,7 @@ python3 index_components.py
 
 ### Step 2: Query Components
 ```bash
-python3 find_component.py
+python3 core/component_browser.py
 ```
 
 **You will now see**:

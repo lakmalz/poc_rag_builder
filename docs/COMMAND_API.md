@@ -211,10 +211,10 @@ result = subprocess.run(
 print(result.stdout)  # Full component output
 ```
 
-### Example 3: Using from find_component.py
+### Example 3: Using from component_browser.py
 
 ```python
-# find_component.py now uses the integrated command
+# component_browser.py now uses the integrated command
 subprocess.run(["python3", "query_cli.py", "query-component-interactive"])
 ```
 

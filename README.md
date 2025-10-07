@@ -180,7 +180,7 @@ python3 core/build_index.py --clean
 Run complete pipeline with interactive query interface:
 
 ```bash
-python3 core/find_component.py
+python3 core/component_browser.py
 ```
 
 **This command will:**
@@ -331,7 +331,7 @@ python3 core/query_cli.py query-find-component "user profile form with edit mode
 Interactive component browser with selection menu:
 
 ```bash
-python3 core/find_component.py
+python3 core/component_browser.py
 ```
 
 **Features:**
@@ -407,7 +407,7 @@ python3 core/build_index.py
 |-------------------------------|-----------------------------------------------------------------|
 | **Quick build** (recommended) | `python3 core/build_index.py`                                   |
 | **Quick build with clean**    | `python3 core/build_index.py --clean`                           |
-| **Interactive pipeline**      | `python3 core/find_component.py`                                |
+| **Interactive pipeline**      | `python3 core/component_browser.py`                             |
 | **Extract only**              | `node scripts/code_extractor.js`                                |
 | **Chunk only**                | `python3 core/ingest_components.py`                             |
 | **Index only**                | `python3 core/index_components.py`                              |
@@ -416,7 +416,7 @@ python3 core/build_index.py
 | **List components (names)**   | `python3 core/query_cli.py list-components --output-format names`|
 | **Get component by name**     | `python3 core/query_cli.py get-component-exact ProfilePage`     |
 | **Search components**         | `python3 core/query_cli.py query-find-component "search term"`  |
-| **Interactive mode**          | `python3 core/find_component.py`                                |
+| **Interactive mode**          | `python3 core/component_browser.py`                             |
 | **Rebuild index**             | `rm -rf build-index/ && python3 core/build_index.py`            |
 
 ---
@@ -435,7 +435,7 @@ poc_rag_builder/                  # Main RAG builder project
 │   ├── ingest_components.py     # Chunking processor
 │   ├── index_components.py      # ChromaDB indexer
 │   ├── query_cli.py             # Query CLI tool
-│   ├── find_component.py        # Interactive component browser
+│   ├── component_browser.py     # Interactive component browser
 │   └── embedding_utils.py       # Embedding utilities
 ├── server/                       # FastAPI REST API server
 │   ├── api_server.py            # FastAPI application

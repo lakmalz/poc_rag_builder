@@ -274,19 +274,10 @@ def query_find_component(q: str, k: int = 5, per_component: int = 1):
         rag_response = "\n\n".join(rag_texts)
         # props = extract_props_list(rag_response)
 
-        # print(f"Extracted Props: {props}\n")
         print("Code Snippet:")
         print("----------------------------------------------------------------")
         print(f"{rag_response}")
         print("----------------------------------------------------------------")
-        # print("After - Extracting code snippet...")
-        # print("----------------------------------------------------------------")
-        # print("Code Snippet:")
-        # print("----------------------------------------------------------------")
-        # code_snippet = extract_code_snippet(rag_response)
-        # for snippet in code_snippet:
-        #     print(snippet)
-        # print("----------------------------------------------------------------")
 
     except ValueError as e:
         print(f"Error: {e}")
