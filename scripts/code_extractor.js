@@ -465,78 +465,6 @@ class RepositoryWideExtractor {
       return debugResult.isComponent;
     }
 
-    // function extractPropsFromContent(fileContent, componentName) {
-    //   const props = {};
-      
-    //   // Enhanced patterns for props extraction
-    //   const propPatterns = [
-    //     // Interface patterns
-    //     { 
-    //       regex: new RegExp(`interface\\s+${componentName}Props\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'),
-    //       name: 'interfaceComponentProps'
-    //     },
-    //     { 
-    //       regex: /interface\s+Props\s*(?:extends\s+[^{]*)?\\s*{([^}]+)}/gs,
-    //       name: 'interfaceProps'
-    //     },
-    //     { 
-    //       regex: new RegExp(`interface\\s+I${componentName}\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'),
-    //       name: 'interfaceIComponent'
-    //     },
-    //     // Type patterns
-    //     { 
-    //       regex: new RegExp(`type\\s+${componentName}Props\\s*=\\s*{([^}]+)}`, 'gs'),
-    //       name: 'typeComponentProps'
-    //     },
-    //     { 
-    //       regex: /type\s+Props\s*=\s*{([^}]+)}/gs,
-    //       name: 'typeProps'
-    //     },
-    //     // Export patterns
-    //     { 
-    //       regex: /export\s+type\s+Props\s*=\s*[^{]*{([^}]+)}/gs,
-    //       name: 'exportTypeProps'
-    //     },
-    //     // Utility type patterns
-    //     { 
-    //       regex: /export\s+type\s+Props\s*=\s*OverWrite<[^,]+,\\s*{([^}]+)}\\s*>/gs,
-    //       name: 'overwriteProps'
-    //     },
-    //     {
-    //       regex: /type\s+Props\s*=\s*Omit<[^,]+,\\s*[^>]+>\\s*&\\s*{([^}]+)}/gs,
-    //       name: 'omitProps'
-    //     },
-    //     {
-    //       regex: /type\s+Props\s*=\s*[^{]*&\\s*{([^}]+)}/gs,
-    //       name: 'intersectionProps'
-    //     }
-    //   ];
-      
-    //   for (const pattern of propPatterns) {
-    //     const match = pattern.regex.exec(fileContent);
-    //     if (match && match[1]) {
-    //       const propsContent = match[1];
-    //       const extractedProps = parsePropsContent(propsContent);
-    //       if (Object.keys(extractedProps).length > 0) {
-    //         Object.assign(props, extractedProps);
-    //         console.log(`      ✅ Props extracted using ${pattern.name}: ${Object.keys(extractedProps).length} props`);
-    //         break;
-    //       }
-    //     }
-    //   }
-      
-    //   // Fallback: extract from function parameters
-    //   if (Object.keys(props).length === 0) {
-    //     const paramProps = extractPropsFromParameters(fileContent);
-    //     if (Object.keys(paramProps).length > 0) {
-    //       Object.assign(props, paramProps);
-    //       console.log(`      ✅ Props extracted from parameters: ${Object.keys(paramProps).length} props`);
-    //     }
-    //   }
-      
-    //   return props;
-    // }
-// ---------------------------------------------------------
     function extractPropsFromParameters(fileContent) {
       const props = {};
       
@@ -695,53 +623,6 @@ class RepositoryWideExtractor {
       console.log(`[DEBUG] Final extracted props for component '${componentName}' in file '${thisFilePath}':`, props);
       return props;
     }
-
-    // function parsePropsContent(propsContent) {
-    //   const props = {};
-      
-    //   // Handle multi-line props with proper brace matching
-    //   let depth = 0;
-    //   let current = '';
-    //   const propDefinitions = [];
-      
-    //   for (let i = 0; i < propsContent.length; i++) {
-    //     const char = propsContent[i];
-        
-    //     if (char === '{' || char === '<' || char === '(') depth++;
-    //     if (char === '}' || char === '>' || char === ')') depth--;
-        
-    //     if ((char === ';' || char === '\\n' || char === ',') && depth === 0) {
-    //       if (current.trim()) {
-    //         propDefinitions.push(current.trim());
-    //         current = '';
-    //       }
-    //     } else {
-    //       current += char;
-    //     }
-    //   }
-      
-    //   if (current.trim()) {
-    //     propDefinitions.push(current.trim());
-    //   }
-      
-    //   propDefinitions.forEach(definition => {
-    //     // Match: propName?: type | propName: type
-    //     const propMatch = definition.match(/^(\w+)(\?)?:\s*(.+?)(?:\s*\/\*\*(.+?)\*\/)?$/);
-    //     if (propMatch) {
-    //       const [, propName, isOptional, propType, comment] = propMatch;
-    //       props[propName] = {
-    //         name: propName,
-    //         type: { name: propType.trim().replace(/[,;]$/, '') },
-    //         required: !isOptional,
-    //         description: comment?.trim() || generatePropDescription(propName, propType),
-    //         defaultValue: null
-    //       };
-    //     }
-    //   });
-      
-    //   return props;
-    // }
-
 
     function parsePropsContent(propsContent, parentFilePath) {
       const props = {};
