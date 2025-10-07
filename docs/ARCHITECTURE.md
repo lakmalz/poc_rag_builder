@@ -44,7 +44,7 @@
 │                               ▼                                     │
 │  Step 4: Component Detection (config-driven)                      │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ • Threshold: CONFIG.detection.confidenceThreshold             │ │
+│  │ • Threshold: CONFIG.detection.componentDetectionThreshold     │ │
 │  │ • Component dirs: CONFIG.detection.componentDirs              │ │
 │  │ • Hooks: CONFIG.detection.hooks                               │ │
 │  └───────────────────────────────────────────────────────────────┘ │
@@ -195,7 +195,7 @@ poc_rag_builder/
        │
        ├─► Smart aggregation (CONFIG.aggregation.patterns)
        │
-       ├─► Detect components (CONFIG.detection.confidenceThreshold)
+       ├─► Detect components (CONFIG.detection.componentDetectionThreshold)
        │
        ▼
 ┌──────────────────┐
@@ -291,7 +291,7 @@ Quick iteration on extraction/chunking strategies
 ### Workflow 3: Quality Improvement
 ```bash
 1. Edit config/extraction.config.js
-   - Increase confidenceThreshold to 5
+   - Increase componentDetectionThreshold to 5
 
 2. Edit Python source files (if needed)
    - core/ingest_components.py: Adjust chunk validation

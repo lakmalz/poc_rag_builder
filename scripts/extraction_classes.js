@@ -155,7 +155,7 @@ class ComponentDetector {
     }
 
     debugResult.confidence = score;
-    debugResult.isComponent = score >= CONFIG.detection.confidenceThreshold;
+    debugResult.isComponent = score >= CONFIG.detection.componentDetectionThreshold;
 
     if (!debugResult.isComponent) {
       if (score === 0) {

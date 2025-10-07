@@ -363,7 +363,7 @@ Edit what gets extracted from the codebase:
   },
   aggregation: {
     enabled: true,
-    confidenceThreshold: 3
+    componentDetectionThreshold: 3
   }
 }
 ```
