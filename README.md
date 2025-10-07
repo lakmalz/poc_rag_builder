@@ -99,8 +99,6 @@ component_chunks.json - Chunked text with embeddings metadata
 
 ---
 
-## ⚙️ Installation & Setup
-
 ### Prerequisites
 - Node.js (v14 or higher)
 - Python 3.8+
@@ -144,12 +142,6 @@ python3 --version
 pip3 list | grep chromadb
 pip3 list | grep sentence-transformers
 ```
-
----
-
-## 🚀 Usage
-
-### Full Pipeline Commands
 
 ---
 
@@ -372,10 +364,6 @@ python3 core/find_component.py
 - Select by number
 - View complete component code
 - Semantic search option ('s' key)
-
----
-
-## ⚙️ Configuration
 
 ---
 
