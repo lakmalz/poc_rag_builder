@@ -8,6 +8,11 @@ const reactDocgenTs = require("react-docgen-typescript");
 // ============================================
 const CONFIG = require("../config/extraction.config.js");
 
+// ============================================
+// LOAD EXTRACTION CLASSES (Refactored OOP)
+// ============================================
+const { ComponentDetector, ComponentParser } = require("./extraction_classes.js");
+
 class RepositoryWideExtractor {
   
   /**
@@ -278,265 +283,12 @@ class RepositoryWideExtractor {
     let skippedNonComponents = 0;
     let processedFiles = 0;
 
-    function getComponentName(doc, file) {
-      if (doc.displayName) return doc.displayName;
-      if (doc.name && doc.name !== "default") return doc.name;
-      
-      const ext = path.extname(file).toLowerCase();
-      const baseName = path.basename(file, ext);
-      
-      // Handle index files by using parent directory name
-      if (baseName.toLowerCase() === "index") {
-        const parentDir = path.basename(path.dirname(file));
-        return parentDir.charAt(0).toUpperCase() + parentDir.slice(1);
-      }
-      
-      // Handle page files (Next.js, Nuxt.js patterns)
-      if (baseName.toLowerCase().includes('page') || file.includes('/pages/')) {
-        return baseName.charAt(0).toUpperCase() + baseName.slice(1).replace(/page$/i, 'Page');
-      }
-      
-      // Handle layout files
-      if (baseName.toLowerCase().includes('layout')) {
-        return baseName.charAt(0).toUpperCase() + baseName.slice(1).replace(/layout$/i, 'Layout');
-      }
-      
-      return baseName.charAt(0).toUpperCase() + baseName.slice(1);
-    }
+    // Use ComponentDetector and ComponentParser classes for component analysis
 
     function isReactComponent(fileContent, filePath) {
-      const debugResult = {
-        file: path.relative(repoRoot, filePath),
-        checks: {},
-        isComponent: false,
-        reason: '',
-        detectedPatterns: [],
-        confidence: 0
-      };
-
-      // Check 1: File extension
-      const ext = path.extname(filePath).toLowerCase();
-      debugResult.checks.isValidExtension = ['.tsx', '.jsx', '.ts', '.js'].includes(ext);
-      if (!debugResult.checks.isValidExtension) {
-        debugResult.reason = 'Invalid file extension';
-        return debugResult;
-      }
-
-      // Check 2: React/JSX indicators
-      debugResult.checks.hasReactImports = 
-        /import.*react/i.test(fileContent) ||
-        /import.*React/i.test(fileContent) ||
-        /from\s+['"]react['"]/i.test(fileContent);
-
-      // Check 3: JSX patterns
-      debugResult.checks.hasJSXReturn = 
-        /return\s*\(\s*</.test(fileContent) ||
-        /return\s*</.test(fileContent) ||
-        /=>\s*\(\s*</.test(fileContent) ||
-        /=>\s*</.test(fileContent) ||
-        /<[A-Z]/.test(fileContent) ||
-        /<\/[a-zA-Z]/.test(fileContent);
-
-      // Check 4: Component declaration patterns
-      const componentPatterns = [
-        {
-          name: 'exportedFunction',
-          regex: /export\s+(?:default\s+)?function\s+[A-Z][a-zA-Z0-9_]*\s*\(/,
-          weight: 3
-        },
-        {
-          name: 'exportedConst',
-          regex: /export\s+(?:default\s+)?const\s+[A-Z][a-zA-Z0-9_]*\s*[=:]/,
-          weight: 3
-        },
-        {
-          name: 'constComponent',
-          regex: /const\s+[A-Z][a-zA-Z0-9_]*\s*[=:]/,
-          weight: 2
-        },
-        {
-          name: 'functionComponent',
-          regex: /function\s+[A-Z][a-zA-Z0-9_]*\s*\(/,
-          weight: 2
-        },
-        {
-          name: 'forwardRef',
-          regex: /forwardRef\s*[<(]/,
-          weight: 4
-        },
-        {
-          name: 'reactMemo',
-          regex: /(React\.memo|memo)\s*\(/,
-          weight: 4
-        },
-        {
-          name: 'classComponent',
-          regex: /class\s+[A-Z][a-zA-Z0-9_]*\s+extends\s+(React\.)?(Component|PureComponent)/,
-          weight: 4
-        },
-        {
-          name: 'arrowFunction',
-          regex: /[A-Z][a-zA-Z0-9_]*\s*=\s*\([^)]*\)\s*=>/,
-          weight: 2
-        },
-        {
-          name: 'defaultExportArrow',
-          regex: /export\s+default\s*\([^)]*\)\s*=>/,
-          weight: 3
-        }
-      ];
-
-      let totalWeight = 0;
-      componentPatterns.forEach(pattern => {
-        if (pattern.regex.test(fileContent)) {
-          debugResult.detectedPatterns.push(pattern.name);
-          totalWeight += pattern.weight;
-        }
-      });
-      const relativeFilePath = debugResult.file;
-
-      debugResult.checks.hasComponentPattern = debugResult.detectedPatterns.length > 0;
-      debugResult.confidence = totalWeight;
-
-      // Check 5: Props definitions
-      debugResult.checks.hasPropsDefinition = 
-        /(?:interface|type)\s+\w*Props/i.test(fileContent) ||
-        /Props\s*[=:]/i.test(fileContent) ||
-        /\{\s*\w+[,}]/.test(fileContent); // destructured props
-
-      // Check 6: Hook usage
-      const hookPatterns = [
-        'useState', 'useEffect', 'useContext', 'useReducer', 
-        'useCallback', 'useMemo', 'useRef', 'useImperativeHandle',
-        'useLayoutEffect', 'useDebugValue', 'useDeferredValue', 'useTransition'
-      ];
-      debugResult.checks.hasHooks = hookPatterns.some(hook => 
-        new RegExp(`\\b${hook}\\b`).test(fileContent)
-      );
-
-      // Check 7: File location hints
-      debugResult.checks.isInComponentDir = 
-        /\/(components?|ui|widgets|elements|views|pages|layouts)\//i.test(relativeFilePath);
-
-      // Check 8: TSX/JSX files are more likely to be components
-      debugResult.checks.isJSXFile = ['.tsx', '.jsx'].includes(ext);
-
-      // Decision logic with scoring
-      let score = 0;
-      
-      if (debugResult.checks.hasJSXReturn) score += 3;
-      if (debugResult.checks.hasReactImports) score += 2;
-      if (debugResult.checks.hasComponentPattern) score += totalWeight;
-      if (debugResult.checks.hasPropsDefinition) score += 1;
-      if (debugResult.checks.hasHooks) score += 2;
-      if (debugResult.checks.isInComponentDir) score += 1;
-      if (debugResult.checks.isJSXFile) score += 1;
-
-      // Special cases
-      const isUtilFile = /\/(utils?|helpers?|constants?|types?|interfaces?)\//i.test(filePath);
-      const isConfigFile = /\.(config|setup|test)\./i.test(filePath);
-      const isHookFile = /use[A-Z]/.test(path.basename(filePath));
-      
-      if (isUtilFile && !debugResult.checks.hasJSXReturn) score -= 2;
-      if (isConfigFile) score -= 3;
-      if (isHookFile && debugResult.checks.hasHooks && !debugResult.checks.hasJSXReturn) {
-        // Custom hooks - still valuable but different category
-        score += 1;
-      }
-
-      debugResult.confidence = score;
-      debugResult.isComponent = score >= CONFIG.detection.confidenceThreshold;
-
-      if (!debugResult.isComponent) {
-        if (score === 0) {
-          debugResult.reason = 'No React patterns detected';
-        } else if (score < 3) {
-          debugResult.reason = `Low confidence score: ${score} (threshold: 3)`;
-        } else if (isUtilFile) {
-          debugResult.reason = 'Utility file without JSX';
-        } else if (isConfigFile) {
-          debugResult.reason = 'Configuration file';
-        }
-      } else {
-        debugResult.reason = `Component detected with confidence score: ${score}`;
-      }
-
-      debugInfo.detectionResults.push(debugResult);
-      return debugResult.isComponent;
+      return ComponentDetector.isReactComponent(fileContent, filePath, repoRoot, debugInfo);
     }
 
-    // function extractPropsFromContent(fileContent, componentName) {
-    //   const props = {};
-      
-    //   // Enhanced patterns for props extraction
-    //   const propPatterns = [
-    //     // Interface patterns
-    //     { 
-    //       regex: new RegExp(`interface\\s+${componentName}Props\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'),
-    //       name: 'interfaceComponentProps'
-    //     },
-    //     { 
-    //       regex: /interface\s+Props\s*(?:extends\s+[^{]*)?\\s*{([^}]+)}/gs,
-    //       name: 'interfaceProps'
-    //     },
-    //     { 
-    //       regex: new RegExp(`interface\\s+I${componentName}\\s*(?:extends\\s+[^{]*)?\\s*{([^}]+)}`, 'gs'),
-    //       name: 'interfaceIComponent'
-    //     },
-    //     // Type patterns
-    //     { 
-    //       regex: new RegExp(`type\\s+${componentName}Props\\s*=\\s*{([^}]+)}`, 'gs'),
-    //       name: 'typeComponentProps'
-    //     },
-    //     { 
-    //       regex: /type\s+Props\s*=\s*{([^}]+)}/gs,
-    //       name: 'typeProps'
-    //     },
-    //     // Export patterns
-    //     { 
-    //       regex: /export\s+type\s+Props\s*=\s*[^{]*{([^}]+)}/gs,
-    //       name: 'exportTypeProps'
-    //     },
-    //     // Utility type patterns
-    //     { 
-    //       regex: /export\s+type\s+Props\s*=\s*OverWrite<[^,]+,\\s*{([^}]+)}\\s*>/gs,
-    //       name: 'overwriteProps'
-    //     },
-    //     {
-    //       regex: /type\s+Props\s*=\s*Omit<[^,]+,\\s*[^>]+>\\s*&\\s*{([^}]+)}/gs,
-    //       name: 'omitProps'
-    //     },
-    //     {
-    //       regex: /type\s+Props\s*=\s*[^{]*&\\s*{([^}]+)}/gs,
-    //       name: 'intersectionProps'
-    //     }
-    //   ];
-      
-    //   for (const pattern of propPatterns) {
-    //     const match = pattern.regex.exec(fileContent);
-    //     if (match && match[1]) {
-    //       const propsContent = match[1];
-    //       const extractedProps = parsePropsContent(propsContent);
-    //       if (Object.keys(extractedProps).length > 0) {
-    //         Object.assign(props, extractedProps);
-    //         console.log(`      ✅ Props extracted using ${pattern.name}: ${Object.keys(extractedProps).length} props`);
-    //         break;
-    //       }
-    //     }
-    //   }
-      
-    //   // Fallback: extract from function parameters
-    //   if (Object.keys(props).length === 0) {
-    //     const paramProps = extractPropsFromParameters(fileContent);
-    //     if (Object.keys(paramProps).length > 0) {
-    //       Object.assign(props, paramProps);
-    //       console.log(`      ✅ Props extracted from parameters: ${Object.keys(paramProps).length} props`);
-    //     }
-    //   }
-      
-    //   return props;
-    // }
-// ---------------------------------------------------------
     function extractPropsFromParameters(fileContent) {
       const props = {};
       
@@ -695,53 +447,6 @@ class RepositoryWideExtractor {
       console.log(`[DEBUG] Final extracted props for component '${componentName}' in file '${thisFilePath}':`, props);
       return props;
     }
-
-    // function parsePropsContent(propsContent) {
-    //   const props = {};
-      
-    //   // Handle multi-line props with proper brace matching
-    //   let depth = 0;
-    //   let current = '';
-    //   const propDefinitions = [];
-      
-    //   for (let i = 0; i < propsContent.length; i++) {
-    //     const char = propsContent[i];
-        
-    //     if (char === '{' || char === '<' || char === '(') depth++;
-    //     if (char === '}' || char === '>' || char === ')') depth--;
-        
-    //     if ((char === ';' || char === '\\n' || char === ',') && depth === 0) {
-    //       if (current.trim()) {
-    //         propDefinitions.push(current.trim());
-    //         current = '';
-    //       }
-    //     } else {
-    //       current += char;
-    //     }
-    //   }
-      
-    //   if (current.trim()) {
-    //     propDefinitions.push(current.trim());
-    //   }
-      
-    //   propDefinitions.forEach(definition => {
-    //     // Match: propName?: type | propName: type
-    //     const propMatch = definition.match(/^(\w+)(\?)?:\s*(.+?)(?:\s*\/\*\*(.+?)\*\/)?$/);
-    //     if (propMatch) {
-    //       const [, propName, isOptional, propType, comment] = propMatch;
-    //       props[propName] = {
-    //         name: propName,
-    //         type: { name: propType.trim().replace(/[,;]$/, '') },
-    //         required: !isOptional,
-    //         description: comment?.trim() || generatePropDescription(propName, propType),
-    //         defaultValue: null
-    //       };
-    //     }
-    //   });
-      
-    //   return props;
-    // }
-
 
     function parsePropsContent(propsContent, parentFilePath) {
       const props = {};
@@ -1248,7 +953,7 @@ class RepositoryWideExtractor {
         if (!docs || docs.length === 0) {
           console.log(`   🛠️  Using manual extraction`);
 
-          const componentName = getComponentName({}, file);
+          const componentName = ComponentParser.getComponentName({}, file);
           let component = {
             id: `${file}::${componentName}`,
             name: componentName,
@@ -1283,7 +988,7 @@ class RepositoryWideExtractor {
         } else {
           // Process automatic extraction results
           docs.forEach((doc, docIndex) => {
-            const nameCandidate = getComponentName(doc, file);
+            const nameCandidate = ComponentParser.getComponentName(doc, file);
 
             console.log(`   🔧 Processing automatic component: ${nameCandidate}`);
 

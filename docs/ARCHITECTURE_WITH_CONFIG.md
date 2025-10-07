@@ -102,7 +102,7 @@
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        INDEXING PIPELINE                            │
-│                       (pipeline_cli.py)                             │
+│                      (index_components.py)                          │
 │                                                                     │
 │  Step 1: Load Config                                               │
 │  ┌───────────────────────────────────────────────────────────────┐ │
@@ -189,9 +189,10 @@ poc_rag_builder/
 ├── scripts/
 │   └── code_extractor.js        ← Uses extraction.config.js
 │
-├── ingest_components.py         ← Will use chunking.config.py
-├── pipeline_cli.py              ← Will use chunking.config.py
-├── query_cli.py                 ← Will use chunking.config.py
+├── core/
+│   ├── ingest_components.py     ← Will use chunking.config.py
+│   ├── index_components.py      ← Will use chunking.config.py
+│   └── query_cli.py             ← Will use chunking.config.py
 │
 ├── build-index/
 │   ├── component_docs.json      ← Extracted components
@@ -310,7 +311,7 @@ Quick iteration on extraction/chunking strategies
    - Increase batch_size
 
 3. Run full pipeline
-   python3 rebuild_index.py --clean
+   python3 core/build_index.py --clean
 
 4. Measure performance improvement
 ```
@@ -325,7 +326,7 @@ Quick iteration on extraction/chunking strategies
    - Enable more validation checks
 
 3. Run and verify
-   python3 pipeline_cli.py --clean
+   python3 core/build_index.py
 ```
 
 ---

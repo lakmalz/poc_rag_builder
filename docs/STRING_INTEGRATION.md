@@ -2,7 +2,7 @@
 
 ## 🎯 What Was Implemented
 
-Successfully integrated `query_cli.py` functions into `find_component.py` with **string-based return values** for seamless display and integration.
+Successfully integrated `query_cli.py` functions into `component_browser.py` with **string-based return values** for seamless display and integration.
 
 ---
 
@@ -50,7 +50,7 @@ component_map, real_components = get_components_data()
 
 ---
 
-### 2. Updated `find_component.py`
+### 2. Updated `component_browser.py`
 
 #### Direct Function Imports
 
@@ -121,7 +121,7 @@ $ python3 -c "from query_cli import get_component_exact; print(get_component_exa
 
 ### Test 4: End-to-End Integration
 ```bash
-$ echo "2" | python3 find_component.py
+$ echo "2" | python3 core/component_browser.py
 
 All data available. Starting interactive component query...
 
@@ -153,7 +153,7 @@ Select a component by number (or 's' for semantic search):
 
 ### Before (Subprocess-based)
 ```python
-# find_component.py
+# component_browser.py
 subprocess.run(["python3", "query_cli.py", "query-component-interactive"])
 ```
 
@@ -166,7 +166,7 @@ subprocess.run(["python3", "query_cli.py", "query-component-interactive"])
 
 ### After (Direct Function Calls)
 ```python
-# find_component.py
+# component_browser.py
 from query_cli import list_components, get_component_exact
 
 components_str = list_components(return_string=True)
@@ -231,7 +231,7 @@ if "ProfilePage.component" in real_components:
 
 ## 🔗 Integration Points
 
-### From `find_component.py`
+### From `component_browser.py`
 ```python
 from query_cli import list_components, get_component_exact, get_components_data
 
@@ -286,7 +286,7 @@ def get_component(name):
 ### What Changed
 1. ✅ Added `return_string` parameter to `list_components()` and `get_component_exact()`
 2. ✅ Created `get_components_data()` helper function
-3. ✅ Updated `find_component.py` to use direct imports instead of subprocess
+3. ✅ Updated `component_browser.py` to use direct imports instead of subprocess
 4. ✅ All functions return strings for easy display and integration
 
 ### Benefits
@@ -300,7 +300,7 @@ def get_component(name):
 - ✅ `list_components(return_string=True)` - Working
 - ✅ `get_component_exact(return_string=True)` - Working (5747 chars for ProfilePage)
 - ✅ `get_components_data()` - Working (returns map + list)
-- ✅ End-to-end integration in `find_component.py` - Working perfectly
+- ✅ End-to-end integration in `component_browser.py` - Working perfectly
 
 ---
 

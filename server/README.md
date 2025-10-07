@@ -111,8 +111,7 @@ gunicorn server.api_server:app \
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/index/build` | POST | Build index (simple pipeline) |
-| `/api/index/rebuild` | POST | Rebuild with validation and versioning |
+| `/api/index/build` | POST | Build index (extract → chunk → index) |
 
 ### Components
 
@@ -169,13 +168,13 @@ The server integrates seamlessly with the core RAG system:
 server/api_server.py
     ↓
 ├── Queries: core/query_cli.py (ComponentQueryer)
-├── Indexing: core/build_index.py, core/rebuild_index.py
+├── Indexing: core/build_index.py
 └── Database: build-index/chromadb/
 ```
 
 **Key Components:**
 - Uses `ComponentQueryer` from `core/query_cli.py` for database queries
-- Calls `core/build_index.py` and `core/rebuild_index.py` via subprocess for indexing
+- Calls `core/build_index.py` via subprocess for indexing
 - Accesses ChromaDB at `build-index/chromadb/` for vector storage
 
 ---
