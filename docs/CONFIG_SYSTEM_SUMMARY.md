@@ -112,10 +112,10 @@ The system works **out of the box** with sensible defaults:
 node scripts/code_extractor.js
 
 # Chunking still works the same  
-python3 ingest_components.py
+python3 core/ingest_components.py
 
 # Indexing still works the same
-python3 pipeline_cli.py --clean
+python3 core/index_components.py
 ```
 
 ### Custom Configuration
@@ -285,9 +285,8 @@ logging: {
 
 ### Soon:
 1. Update `ingest_components.py` to use `chunking.config.py`
-2. Update `pipeline_cli.py` to use config
-3. Update `query_cli.py` to use query config
-4. Add config validation on startup
+2. Update `query_cli.py` to use query config
+3. Add config validation on startup
 
 ### Future:
 1. Add config profiles (dev, test, prod)

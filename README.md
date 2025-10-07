@@ -463,7 +463,6 @@ poc_rag_builder/                  # Main RAG builder project
 │   ├── index_components.py      # ChromaDB indexer
 │   ├── query_cli.py             # Query CLI tool
 │   ├── find_component.py        # Interactive component browser
-│   ├── pipeline_cli.py          # Pipeline utilities
 │   └── embedding_utils.py       # Embedding utilities
 ├── server/                       # FastAPI REST API server
 │   ├── api_server.py            # FastAPI application
