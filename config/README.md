@@ -1,10 +1,10 @@
 # RAG Component Extraction Configuration Guide
 
-This directory contains all configuration files for the RAG component extraction, chunking, and indexing system.
+This directory contains configuration for the RAG component extraction system.
 
 ## 📁 Configuration Files
 
-### 1. `extraction.config.js` (JavaScript/Extraction)
+### `extraction.config.js` (JavaScript/Extraction)
 Controls **what components get extracted** from your codebase.
 
 **Key Settings:**
@@ -14,15 +14,10 @@ Controls **what components get extracted** from your codebase.
 - `aggregation.patterns` - Component file naming patterns
 - `detection.confidenceThreshold` - How strict component detection should be
 
-### 2. `chunking.config.py` (Python/Chunking & Indexing)
-Controls **how components are chunked** and **indexed into ChromaDB**.
-
-**Key Settings:**
-- `CHUNKING_CONFIG.chunk_types` - Which chunk types to create
-- `CHUNKING_CONFIG.max_chunk_size` - Size limits for each chunk type
-- `INDEXING_CONFIG.chromadb` - ChromaDB settings
-- `QUERY_CONFIG` - Search/query behavior
-- `FILE_FILTERS` - Additional filtering for chunking
+**Note:** Python pipeline settings (chunking, indexing, querying) are **hardcoded** in the Python source files:
+- `core/index_components.py` - ChromaDB settings (collection_name, model_name, distance_metric)
+- `core/ingest_components.py` - Chunking logic (chunk types, processing)
+- `core/query_cli.py` - Query settings (n_results, thresholds)
 
 ---
 
@@ -77,50 +72,7 @@ aggregation: {
 }
 ```
 
-### Example 4: Disable Code Snippets Chunking
-
-**File:** `chunking.config.py`
-
-```python
-CHUNKING_CONFIG = {
-    "chunk_types": {
-        "basic_info": True,
-        "props": True,
-        "complete_component": True,
-        "component_source": True,
-        "interfaces": True,
-        "styles": True,
-        "code_snippets": False  # ← Disable this
-    }
-}
-```
-
-### Example 5: Only Index Multi-File Components
-
-**File:** `chunking.config.py`
-
-```python
-FILE_FILTERS = {
-    "component_types": ["multi-file"],  # Only aggregated components
-}
-```
-
-### Example 6: Increase Chunk Sizes for Larger Components
-
-**File:** `chunking.config.py`
-
-```python
-CHUNKING_CONFIG = {
-    "max_chunk_size": {
-        "basic_info": 5000,           # Increased from 2000
-        "complete_component": 100000,  # Increased from 50000
-        "component_source": 20000,     # Increased from 10000
-        "interfaces": 10000,           # Increased from 5000
-    }
-}
-```
-
-### Example 7: Enable Debug Logging
+### Example 4: Enable Debug Logging
 
 **File:** `extraction.config.js`
 
@@ -129,16 +81,6 @@ logging: {
   level: 'debug',
   showDetectionDetails: true,
   showPropsDebug: true
-}
-```
-
-**File:** `chunking.config.py`
-
-```python
-LOGGING_CONFIG = {
-    "level": "debug",
-    "debug_chunks": True,
-    "debug_metadata": True
 }
 ```
 
@@ -168,18 +110,6 @@ extraction: {
 advanced: {
   enableParallelProcessing: true,
   workers: 8
-}
-```
-
-**chunking.config.py:**
-```python
-CHUNKING_CONFIG = {
-    "chunk_types": {
-        "code_snippets": False,  # Skip code snippets for speed
-    }
-},
-INDEXING_CONFIG = {
-    "batch_size": 200,  # Larger batches
 }
 ```
 
@@ -236,20 +166,7 @@ detection: {
 }
 ```
 
-**chunking.config.py:**
-```python
-CHUNKING_CONFIG = {
-    "chunk_types": {
-        "basic_info": True,
-        "complete_component": True,
-        "interfaces": True,
-        "code_snippets": False  # Skip noisy snippets
-    }
-},
-VALIDATION_CONFIG = {
-    "min_component_size": 200,  # Skip tiny components
-}
-```
+**Note:** Python pipeline chunking logic is hardcoded in `core/ingest_components.py`.
 
 ---
 
@@ -280,7 +197,10 @@ files: {
 
 ### Chunk Types Explained
 
+**Note:** Chunk types are hardcoded in `core/ingest_components.py`. All types are always created.
+
 | Chunk Type | Purpose | Size | When Used |
+|------------|---------|------|-----------|
 |------------|---------|------|-----------|
 | `basic_info` | Component metadata | Small | Always |
 | `props` | Props documentation | Small | Always |
@@ -347,14 +267,9 @@ detection: {
 
 ### Problem: Chunks too large
 
-**Solution:** Reduce `max_chunk_size` limits
-```python
-CHUNKING_CONFIG = {
-    "max_chunk_size": {
-        "complete_component": 30000  # Reduced
-    }
-}
-```
+**Solution:** Chunking logic is hardcoded in `core/ingest_components.py`. To modify chunk sizes, edit the source file directly:
+- Chunk processing logic in `ingest_components.py`
+- All chunk types are always created (basic_info, props, complete_component, etc.)
 
 ### Problem: Slow extraction
 
@@ -371,8 +286,11 @@ advanced: {
 ## 📝 Next Steps
 
 1. **Review** `extraction.config.js` and adjust for your codebase
-2. **Review** `chunking.config.py` and adjust chunk types
-3. **Run extraction** and check the summary
+2. **Run extraction** and check the summary
+3. **Modify Python settings** directly in source files if needed:
+   - `core/index_components.py` - ChromaDB collection settings
+   - `core/ingest_components.py` - Chunking logic
+   - `core/query_cli.py` - Query parameters
 4. **Iterate** based on results
 
 For more details, see the main README.md in the project root.

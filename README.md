@@ -372,20 +372,23 @@ Edit what gets extracted from the codebase:
 
 Edit how components are chunked and indexed:
 
-**File:** `config/chunking.config.py`
+## 📁 Project Structure
 
-**Key Settings:**
-```python
-CHUNKING_CONFIG = {
-    "chunk_types": [...],
-    "max_chunk_size": 2000,
-    "include_metadata": True
-}
-
-INDEXING_CONFIG = {
-    "batch_size": 100,
-    "embedding_model": "all-MiniLM-L6-v2"
-}
+```
+poc_rag_builder/
+├── scripts/              # JavaScript extraction tools
+│   ├── code_extractor.js
+│   └── extraction_classes.js
+├── core/                 # Python RAG pipeline
+│   ├── ingest_components.py
+│   ├── index_components.py
+│   ├── query_cli.py
+│   └── embedding_utils.py
+├── build-index/          # Generated indexes
+│   ├── component_docs.json
+│   ├── component_chunks.json
+│   └── chromadb/
+└── Custom-ui/            # Sample React components
 ```
 
 ---
@@ -442,8 +445,7 @@ poc_rag_builder/                  # Main RAG builder project
 │   ├── requirements.txt         # Server dependencies
 │   └── README.md                # Server documentation
 ├── config/
-│   ├── extraction.config.js      # Extraction settings (set repository.root here)
-│   └── chunking.config.py        # Chunking & indexing settings
+│   └── extraction.config.js      # Extraction settings (set repository.root here)
 ├── scripts/
 │   └── code_extractor.js         # Node.js component extractor
 ├── build-index/                  # Generated output directory
@@ -454,7 +456,8 @@ poc_rag_builder/                  # Main RAG builder project
 ├── package.json                  # Node.js dependencies
 ├── FASTAPI-DOCUMENTATION.md      # Complete API documentation
 └── README.md                     # This file
-```
+
+**Note:** Python settings (ChromaDB, chunking logic) are hardcoded in `core/*.py` files.
 
 **Key Notes:**
 - `web-extensions/` is your **target React repository** - clone it into this folder
