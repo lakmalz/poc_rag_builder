@@ -543,6 +543,8 @@ poc_rag_builder/                  # Main RAG builder project
 ├── scripts/
 │   ├── code_extractor.js        # Component extractor
 │   └── extraction_classes.js    # Extraction helpers
+├── read-chromadb/                # ChromaDB inspection tools
+│   └── read_chromadb.py         # Read/export ChromaDB data
 ├── server/                       # FastAPI REST API
 │   ├── api_server.py            # API server
 │   ├── requirements.txt         # Server dependencies
@@ -640,6 +642,14 @@ poc_rag_builder/                  # Main RAG builder project
 | **2. Chunk** | `python3 core/ingest_components.py` | `component_chunks.json` |
 | **3. Index** | `python3 core/index_components.py` | `chromadb/` |
 
+### ChromaDB Inspection
+
+| Task | Command |
+|------|---------|
+| **List all data** | `python3 read-chromadb/read_chromadb.py list` |
+| **Search data** | `python3 read-chromadb/read_chromadb.py search "query"` |
+| **Export to JSON** | `python3 read-chromadb/read_chromadb.py export` |
+
 ---
 
 ## 📖 Additional Documentation
@@ -647,6 +657,7 @@ poc_rag_builder/                  # Main RAG builder project
 - **API Documentation:** [server/README.md](server/README.md)
 - **Config Guide:** [config/README.md](config/README.md)
 - **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **Reading ChromaDB:** [docs/READING_CHROMADB.md](docs/READING_CHROMADB.md)
 
 ---
 

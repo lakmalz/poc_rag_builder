@@ -73,6 +73,8 @@ def read_chromadb_collection(collection_name="component_chunks"):
 
 def search_chromadb(query_text, collection_name="component_chunks", n_results=5):
     """Search ChromaDB with a query"""
+    import sys
+    sys.path.append(str(PROJECT_ROOT / "core"))
     from embedding_utils import get_embedding_function
     
     # Initialize client

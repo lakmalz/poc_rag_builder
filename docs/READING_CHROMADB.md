@@ -16,11 +16,11 @@ build-index/chromadb/
 
 ## Method 1: Using Python Script (Recommended)
 
-I've created a utility script `scripts/read_chromadb.py` with these commands:
+I've created a utility script `read-chromadb/read_chromadb.py` with these commands:
 
 ### List all documents
 ```bash
-python3 scripts/read_chromadb.py list
+python3 read-chromadb/read_chromadb.py list
 ```
 
 **Output:**
@@ -30,17 +30,17 @@ python3 scripts/read_chromadb.py list
 
 ### Search documents
 ```bash
-python3 scripts/read_chromadb.py search "your query here"
+python3 read-chromadb/read_chromadb.py search "your query here"
 ```
 
 **Example:**
 ```bash
-python3 scripts/read_chromadb.py search "user profile form"
+python3 read-chromadb/read_chromadb.py search "user profile form"
 ```
 
 ### Export to JSON
 ```bash
-python3 scripts/read_chromadb.py export
+python3 read-chromadb/read_chromadb.py export
 ```
 
 This creates `chromadb_export.json` with all documents and metadata.
@@ -211,6 +211,22 @@ Each document in ChromaDB has metadata:
 - Stored in binary files (`data_level0.bin`)
 - Dimension: 384 (for all-MiniLM-L6-v2 model)
 - Used for semantic search
+
+### Quick Access Script
+For easy access, you can create an alias:
+```bash
+# Add to your ~/.zshrc or ~/.bashrc
+alias chromadb-list="python3 read-chromadb/read_chromadb.py list"
+alias chromadb-search="python3 read-chromadb/read_chromadb.py search"
+alias chromadb-export="python3 read-chromadb/read_chromadb.py export"
+```
+
+Then use:
+```bash
+chromadb-list
+chromadb-search "user profile"
+chromadb-export
+```
 
 ---
 
