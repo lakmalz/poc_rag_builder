@@ -37,6 +37,10 @@ class ComponentIngestor:
         directory = component.get('directory', '')
         raw_files = component.get('raw', {})
         
+        # Get the main component file path (prefer component, then interface, then any available)
+        files = component.get('files', {})
+        file_path = files.get('component') or files.get('interface') or files.get('style') or files.get('index') or directory
+        
         # Chunk 1: Complete aggregated component (ALL files together)
         all_code_parts = []
         
@@ -58,6 +62,7 @@ class ComponentIngestor:
             "component_id": component_id,
             "component_name": component_name,
             "directory": directory,
+            "file": file_path,
             "chunk_type": "complete_component",
             "text": f"{component_name} complete component with all files:\n\n" + "\n\n".join(all_code_parts)
         })
@@ -82,6 +87,7 @@ class ComponentIngestor:
             "component_id": component_id,
             "component_name": component_name,
             "directory": directory,
+            "file": file_path,
             "chunk_type": "basic_info",
             "text": " | ".join(basic_info_parts)
         })
@@ -95,6 +101,7 @@ class ComponentIngestor:
                     "component_id": component_id,
                     "component_name": component_name,
                     "directory": directory,
+                    "file": file_path,
                     "chunk_type": "props",
                     "text": props_info
                 })
@@ -106,6 +113,7 @@ class ComponentIngestor:
                 "component_id": component_id,
                 "component_name": component_name,
                 "directory": directory,
+                "file": file_path,
                 "chunk_type": "component_source",
                 "text": f"{component_name} component implementation:\n```tsx\n{raw_files['component']}\n```"
             })
@@ -129,6 +137,7 @@ class ComponentIngestor:
                 "component_id": component_id,
                 "component_name": component_name,
                 "directory": directory,
+                "file": file_path,
                 "chunk_type": "interfaces",
                 "text": " | ".join(type_summary_parts) + f"\n\n```typescript\n{raw_files['interface']}\n```"
             })
@@ -143,6 +152,7 @@ class ComponentIngestor:
                 "component_id": component_id,
                 "component_name": component_name,
                 "directory": directory,
+                "file": file_path,
                 "chunk_type": "styles",
                 "text": f"{component_name} styles ({style_type}):\n```typescript\n{raw_files['style']}\n```"
             })

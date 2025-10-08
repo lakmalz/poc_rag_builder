@@ -1,18 +1,18 @@
-# Configuration-Driven RAG Architecture
+# RAG Pipeline Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         USER CONFIGURATION                          │
+│                          CONFIGURATION                              │
 │                                                                     │
 │  ┌──────────────────────────┐    ┌──────────────────────────────┐ │
-│  │ extraction.config.js     │    │ chunking.config.py           │ │
-│  ├──────────────────────────┤    ├──────────────────────────────┤ │
-│  │ • Repository paths       │    │ • Chunk types               │ │
-│  │ • File patterns          │    │ • Chunk sizes               │ │
-│  │ • Include/exclude dirs   │    │ • ChromaDB settings         │ │
-│  │ • Aggregation patterns   │    │ • Query behavior            │ │
-│  │ • Detection threshold    │    │ • Validation rules          │ │
-│  │ • Logging level          │    │ • Filters                   │ │
+│  │ extraction.config.js     │    │ Python Settings              │ │
+│  ├──────────────────────────┤    │ (Hardcoded in Source)        │ │
+│  │ • Repository paths       │    ├──────────────────────────────┤ │
+│  │ • File patterns          │    │ • Chunk types (all types)    │ │
+│  │ • Include/exclude dirs   │    │ • ChromaDB settings          │ │
+│  │ • Aggregation patterns   │    │ • Query parameters           │ │
+│  │ • Detection threshold    │    │ • Collection name            │ │
+│  │ • Logging level          │    │ • Embedding model            │ │
 │  └──────────────────────────┘    └──────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
                                ▼
@@ -44,7 +44,7 @@
 │                               ▼                                     │
 │  Step 4: Component Detection (config-driven)                      │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ • Threshold: CONFIG.detection.confidenceThreshold             │ │
+│  │ • Threshold: CONFIG.detection.componentDetectionThreshold     │ │
 │  │ • Component dirs: CONFIG.detection.componentDirs              │ │
 │  │ • Hooks: CONFIG.detection.hooks                               │ │
 │  └───────────────────────────────────────────────────────────────┘ │
@@ -64,37 +64,23 @@
 │                         CHUNKING PIPELINE                           │
 │                      (ingest_components.py)                         │
 │                                                                     │
-│  Step 1: Load Config                                               │
-│  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ from config.chunking_config import CHUNKING_CONFIG            │ │
-│  └───────────────────────────────────────────────────────────────┘ │
-│                               ▼                                     │
-│  Step 2: Load Components                                           │
+│  Step 1: Load Components                                           │
 │  ┌───────────────────────────────────────────────────────────────┐ │
 │  │ • Read component_docs.json                                    │ │
-│  │ • Apply FILE_FILTERS.component_types filter                   │ │
-│  │ • Apply FILE_FILTERS.include_directories filter               │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                               ▼                                     │
-│  Step 3: Create Chunks (config-driven)                            │
+│  Step 2: Create Chunks                                             │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ IF CHUNKING_CONFIG.chunk_types.basic_info:                    │ │
-│  │   → Create basic_info chunk                                   │ │
-│  │ IF CHUNKING_CONFIG.chunk_types.complete_component:            │ │
-│  │   → Create complete_component chunk                           │ │
-│  │ IF CHUNKING_CONFIG.chunk_types.component_source:              │ │
-│  │   → Create component_source chunk                             │ │
-│  │ IF CHUNKING_CONFIG.chunk_types.interfaces:                    │ │
-│  │   → Create interfaces chunk                                   │ │
-│  │ IF CHUNKING_CONFIG.chunk_types.code_snippets:                 │ │
-│  │   → Create code snippet chunks                                │ │
+│  │ • Create basic_info chunk                                     │ │
+│  │ • Create complete_component chunk                             │ │
+│  │ • Create component_source chunk                               │ │
+│  │ • Create interfaces chunk                                     │ │
+│  │ • Create code snippet chunks                                  │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                               ▼                                     │
-│  Step 4: Validate Chunks                                           │
+│  Step 3: Save Chunks                                               │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ • Check min/max sizes from VALIDATION_CONFIG                  │ │
-│  │ • Check for duplicates if enabled                             │ │
-│  │ • Validate metadata if enabled                                │ │
+│  │ • Write chunks to component_chunks.json                       │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                               ▼                                     │
 │  Output: build-index/component_chunks.json                        │
@@ -104,23 +90,23 @@
 │                        INDEXING PIPELINE                            │
 │                      (index_components.py)                          │
 │                                                                     │
-│  Step 1: Load Config                                               │
+│  Step 1: Load Hardcoded Settings                                   │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ from config.chunking_config import INDEXING_CONFIG            │ │
+│  │ • Collection: "component_chunks" (hardcoded)                  │ │
+│  │ • Model: "all-MiniLM-L6-v2" (hardcoded)                       │ │
+│  │ • Distance: "cosine" (hardcoded)                              │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                               ▼                                     │
 │  Step 2: Initialize ChromaDB                                       │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ • Collection: INDEXING_CONFIG.chromadb.collection_name        │ │
-│  │ • Directory: INDEXING_CONFIG.chromadb.persist_directory       │ │
-│  │ • Embedding: INDEXING_CONFIG.chromadb.embedding_function      │ │
+│  │ • Persist directory: "./build-index/chromadb"                 │ │
+│  │ • Embedding function: SentenceTransformerEmbeddingFunction   │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                               ▼                                     │
 │  Step 3: Index Documents                                           │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ • Batch size: INDEXING_CONFIG.batch_size                      │ │
-│  │ • Metadata fields: INDEXING_CONFIG.index_metadata             │ │
-│  │ • Clear first: INDEXING_CONFIG.clear_before_index             │ │
+│  │ • Batch size: 100 (hardcoded)                                 │ │
+│  │ • Metadata fields: All component metadata                     │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                               ▼                                     │
 │  Output: build-index/chromadb/ (vector database)                  │
@@ -130,22 +116,15 @@
 │                          QUERY PIPELINE                             │
 │                        (query_cli.py)                               │
 │                                                                     │
-│  Step 1: Load Config                                               │
+│  Step 1: Search ChromaDB                                           │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ from config.chunking_config import QUERY_CONFIG               │ │
+│  │ • Uses hardcoded search parameters                            │ │
+│  │ • Returns top N most similar results                          │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                               ▼                                     │
-│  Step 2: Search ChromaDB                                           │
+│  Step 2: Rank Results                                              │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ • N results: QUERY_CONFIG.default_n_results                   │ │
-│  │ • Threshold: QUERY_CONFIG.similarity_threshold                │ │
-│  │ • Filter by: QUERY_CONFIG.filter_by                           │ │
-│  └───────────────────────────────────────────────────────────────┘ │
-│                               ▼                                     │
-│  Step 3: Rank Results                                              │
-│  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ • Apply boost scores: QUERY_CONFIG.boost_scores               │ │
-│  │ • Sort by similarity * boost                                  │ │
+│  │ • Sort by similarity score                                    │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                               ▼                                     │
 │  Output: Ranked search results with metadata                      │
@@ -159,20 +138,22 @@
 ### 1. **User Updates Config**
 ```
 config/extraction.config.js → Change repository.root to "my-app/src"
-config/chunking.config.py   → Disable code_snippets
 ```
+
+**Note:** Python settings (chunking, indexing, querying) are hardcoded in source files:
+- `core/ingest_components.py` - Chunking logic (all chunk types always created)
+- `core/index_components.py` - ChromaDB settings (collection, model, distance)
+- `core/query_cli.py` - Query parameters (n_results, thresholds)
 
 ### 2. **Scripts Load Config**
 ```
 code_extractor.js → const CONFIG = require("../config/extraction.config.js")
-ingest_components.py → from config.chunking_config import CHUNKING_CONFIG
 ```
 
-### 3. **Behavior Changes Automatically**
+### 3. **Behavior Changes**
 ```
-✅ Extraction happens from "my-app/src"
-✅ No code snippet chunks created
-✅ No code changes required!
+✅ Extraction happens from "my-app/src" (configurable)
+✅ Python pipeline uses hardcoded settings
 ```
 
 ---
@@ -183,39 +164,38 @@ ingest_components.py → from config.chunking_config import CHUNKING_CONFIG
 poc_rag_builder/
 ├── config/
 │   ├── extraction.config.js     ← JavaScript extraction config
-│   ├── chunking.config.py       ← Python chunking/indexing config
 │   └── README.md                ← Configuration guide
 │
 ├── scripts/
 │   └── code_extractor.js        ← Uses extraction.config.js
 │
 ├── core/
-│   ├── ingest_components.py     ← Will use chunking.config.py
-│   ├── index_components.py      ← Will use chunking.config.py
-│   └── query_cli.py             ← Will use chunking.config.py
+│   ├── ingest_components.py     ← Hardcoded chunking logic
+│   ├── index_components.py      ← Hardcoded ChromaDB settings
+│   └── query_cli.py             ← Hardcoded query parameters
 │
 ├── build-index/
 │   ├── component_docs.json      ← Extracted components
 │   ├── component_chunks.json    ← Generated chunks
 │   └── chromadb/                ← Vector database
 │
-└── web-extensions/              ← Source code (configurable)
+└── web-extensions/              ← Source code (configurable via extraction.config.js)
 ```
 
 ---
 
-## 🔄 Data Flow with Config
+## 🔄 Data Flow
 
 ```
 ┌──────────────┐
-│  Source Code │ (CONFIG.repository.root)
+│  Source Code │ (CONFIG.repository.root from extraction.config.js)
 └──────┬───────┘
        │
        ├─► Scan files (CONFIG.files.include/exclude)
        │
        ├─► Smart aggregation (CONFIG.aggregation.patterns)
        │
-       ├─► Detect components (CONFIG.detection.confidenceThreshold)
+       ├─► Detect components (CONFIG.detection.componentDetectionThreshold)
        │
        ▼
 ┌──────────────────┐
@@ -223,11 +203,7 @@ poc_rag_builder/
 │ .json            │
 └──────┬───────────┘
        │
-       ├─► Filter files (FILE_FILTERS)
-       │
-       ├─► Create chunks (CHUNKING_CONFIG.chunk_types)
-       │
-       ├─► Validate (VALIDATION_CONFIG)
+       ├─► Create chunks (all chunk types - hardcoded in ingest_components.py)
        │
        ▼
 ┌──────────────────┐
@@ -235,20 +211,16 @@ poc_rag_builder/
 │ .json            │
 └──────┬───────────┘
        │
-       ├─► Batch indexing (INDEXING_CONFIG.batch_size)
+       ├─► Batch indexing (batch_size=100 - hardcoded in index_components.py)
        │
-       ├─► Embed text (INDEXING_CONFIG.embedding_function)
+       ├─► Embed text (all-MiniLM-L6-v2 - hardcoded in index_components.py)
        │
        ▼
 ┌──────────────────┐
 │  ChromaDB        │ (vector database)
 └──────┬───────────┘
        │
-       ├─► Search (QUERY_CONFIG.default_n_results)
-       │
-       ├─► Filter (QUERY_CONFIG.filter_by)
-       │
-       ├─► Rank (QUERY_CONFIG.boost_scores)
+       ├─► Search and rank by similarity (hardcoded in query_cli.py)
        │
        ▼
 ┌──────────────────┐
@@ -258,19 +230,19 @@ poc_rag_builder/
 
 ---
 
-## 🎯 Benefits of Config-Driven Architecture
+## 🎯 Architecture Benefits
 
-### ✅ **Flexibility**
-Change behavior without code changes - just edit config files
+### ✅ **Extraction Flexibility**
+Change component extraction behavior via `extraction.config.js` without code changes
+
+### ✅ **Pipeline Consistency**
+Python pipeline uses stable, hardcoded settings ensuring consistent behavior
 
 ### ✅ **Maintainability**
-All settings in one place, easy to find and modify
-
-### ✅ **Reusability**
-Different configs for different projects/environments
+Extraction settings in config file, pipeline settings in source code - clear separation
 
 ### ✅ **Testability**
-Easy to create test configs with limited scope
+Easy to create test extraction configs with limited scope
 
 ### ✅ **Documentation**
 Config files are self-documenting with inline comments
@@ -306,9 +278,9 @@ Quick iteration on extraction/chunking strategies
    - Add more exclude patterns
    - Set includeOnly to limit scope
 
-2. Edit config/chunking.config.py
-   - Disable code_snippets
-   - Increase batch_size
+2. Edit Python source files (if needed)
+   - core/index_components.py: Adjust batch_size
+   - core/ingest_components.py: Modify chunking logic
 
 3. Run full pipeline
    python3 core/build_index.py --clean
@@ -319,11 +291,11 @@ Quick iteration on extraction/chunking strategies
 ### Workflow 3: Quality Improvement
 ```bash
 1. Edit config/extraction.config.js
-   - Increase confidenceThreshold to 5
+   - Increase componentDetectionThreshold to 5
 
-2. Edit config/chunking.config.py
-   - Increase min_component_size
-   - Enable more validation checks
+2. Edit Python source files (if needed)
+   - core/ingest_components.py: Adjust chunk validation
+   - core/index_components.py: Modify indexing logic
 
 3. Run and verify
    python3 core/build_index.py

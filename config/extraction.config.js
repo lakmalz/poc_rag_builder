@@ -104,7 +104,7 @@ module.exports = {
   detection: {
     // Minimum confidence score to consider file as a component
     // Lower = more permissive, Higher = more strict
-    confidenceThreshold: 3,
+    componentDetectionThreshold: 3,
     
     // Component directory patterns (used for scoring)
     componentDirs: [
@@ -116,167 +116,14 @@ module.exports = {
       'pages',
       'layouts',
       'features'
-    ],
-    
-    // React hook patterns
-    hooks: [
-      'useState',
-      'useEffect',
-      'useContext',
-      'useReducer',
-      'useCallback',
-      'useMemo',
-      'useRef',
-      'useImperativeHandle',
-      'useLayoutEffect',
-      'useDebugValue',
-      'useDeferredValue',
-      'useTransition'
     ]
-  },
-
-  // ============================================
-  // EXTRACTION SETTINGS
-  // ============================================
-  extraction: {
-    // Skip standalone index.ts/tsx files (they're usually just re-exports)
-    skipStandaloneIndexFiles: true,
-    
-    // Include full source code in extracted data
-    includeFullSourceCode: true,
-    
-    // Maximum source code size per component (characters)
-    // Set to 0 for unlimited
-    maxSourceCodeSize: 0,
-    
-    // Extract interfaces from separate .interface.ts files
-    extractInterfaces: true,
-    
-    // Extract styles from separate .style.ts files
-    extractStyles: true,
-    
-    // Extract TypeScript types
-    extractTypes: true,
-    
-    // Extract enums
-    extractEnums: true
-  },
-
-  // ============================================
-  // CHUNKING SETTINGS
-  // ============================================
-  chunking: {
-    // Enable different chunk types
-    chunkTypes: {
-      // Basic metadata chunk
-      basicInfo: true,
-      
-      // Component props information
-      props: true,
-      
-      // Full source code
-      fullSource: true,
-      
-      // Complete component (all files combined) - for aggregated components
-      completeComponent: true,
-      
-      // Individual component source (just .component.tsx)
-      componentSource: true,
-      
-      // Interfaces and types
-      interfaces: true,
-      
-      // Styles
-      styles: true,
-      
-      // Searchable code snippets
-      codeSnippets: true
-    },
-    
-    // Code snippet settings
-    snippets: {
-      // Minimum lines for a code snippet
-      minLines: 3,
-      
-      // Maximum lines per snippet
-      maxLines: 20,
-      
-      // Overlap between snippets (lines)
-      overlap: 2
-    },
-    
-    // Chunk size limits (characters)
-    maxChunkSize: {
-      basicInfo: 2000,
-      props: 3000,
-      completeComponent: 50000,  // Large for aggregated components
-      componentSource: 10000,
-      interfaces: 5000,
-      styles: 5000,
-      codeSnippet: 1500
-    }
-  },
-
-  // ============================================
-  // INDEXING SETTINGS
-  // ============================================
-  indexing: {
-    // ChromaDB collection name
-    collectionName: "component_docs",
-    
-    // Embedding model
-    embeddingModel: "all-MiniLM-L6-v2",
-    
-    // Batch size for indexing
-    batchSize: 100,
-    
-    // Index only changed files (incremental indexing)
-    incrementalMode: false,
-    
-    // Clear database before indexing
-    clearBeforeIndex: false
   },
 
   // ============================================
   // LOGGING & DEBUGGING
   // ============================================
   logging: {
-    // Verbosity level: 'minimal', 'normal', 'verbose', 'debug'
-    level: 'normal',
-    
-    // Show component detection details
-    showDetectionDetails: false,
-    
-    // Show props extraction debug info
-    showPropsDebug: false,
-    
-    // Log extraction statistics
-    showStatistics: true,
-    
     // Create backup of previous extraction
     createBackup: true
-  },
-
-  // ============================================
-  // ADVANCED SETTINGS
-  // ============================================
-  advanced: {
-    // Use TypeScript parser if tsconfig.json exists
-    useTypeScriptParser: true,
-    
-    // Parser timeout (ms)
-    parserTimeout: 5000,
-    
-    // Retry failed extractions
-    retryOnError: true,
-    
-    // Maximum retries
-    maxRetries: 2,
-    
-    // Parallel processing
-    enableParallelProcessing: false,
-    
-    // Number of workers for parallel processing
-    workers: 4
   }
 };

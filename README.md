@@ -1,391 +1,495 @@
 # RAG Builder for React Components
 
-A powerful RAG (Retrieval-Augmented Generation) system for indexing and querying React components from codebases. This tool extracts React components, chunks them intelligently, and stores them in a vector database for semantic search.
+A powerful RAG (Retrieval-Augmented Generation) system for indexing and querying React components from codebases. Extract, chunk, and semantically search React components using vector embeddings.
 
 ## 📋 Table of Contents
 
 - [Overview](#overview)
-- [Pipeline Architecture](#pipeline-architecture)
-- [Installation & Setup](#installation--setup)
-- [Usage](#usage)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Usage Guide](#usage-guide)
+  - [CLI Usage](#cli-usage)
+  - [API Usage](#api-usage)
 - [Configuration](#configuration)
-- [Quick Reference](#quick-reference)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
 ## 🎯 Overview
 
-This RAG builder processes React codebases to create a searchable index of components, enabling:
-- **Smart component extraction** with multi-file aggregation (component + interface + styles + index)
-- **Intelligent chunking** into complete components and individual parts
-- **Vector-based semantic search** using ChromaDB and sentence-transformers
-- **CLI tools** for querying and retrieving components
+**What it does:**
+- 🔍 **Extracts** React components from your codebase
+- 🧩 **Chunks** components intelligently (props, interfaces, styles, code snippets)
+- 🗄️ **Indexes** into ChromaDB vector database
+- 🔎 **Searches** using natural language queries
 
-### Source Repository
-Original React codebase: [web-extensions](currently url not available, you can use any react component)
-
-### Target Repository Location
-
-**Important:** This RAG builder expects the target React codebase to be located in a specific directory:
-
-```
-poc_rag_builder/
-└── web-extensions/          ← Your React repository goes here
-    ├── src/
-    │   └── components/
-    ├── package.json
-    └── ...
-```
-
-**Setup Instructions:**
-
-1. **Clone the target repository** into the project root:
-   ```bash
-   cd poc_rag_builder
-   currently not available
-   ```
-
-2. **Or use a different repository name:**
-   - Clone your React project into this folder
-   - Update `config/extraction.config.js`:
-     ```javascript
-     repository: {
-       root: "your-repo-name"  // Change this to match your folder name
-     }
-     ```
-
-**Why this structure?**
-- The extractor looks for the repository in a subfolder (default: `web-extensions`)
-- This keeps the RAG builder tools separate from the target codebase
-- You can easily switch between different React projects by changing the `root` setting
-
-**Example with different repositories:**
-```
-poc_rag_builder/
-├── web-extensions/          ← Original example repo
-├── my-react-app/           ← Your custom React app
-└── another-project/        ← Another React project
-```
-
-Just update the config to point to whichever one you want to index!
+**Key Features:**
+- Smart multi-file aggregation (`.component.tsx` + `.interface.ts` + `.style.ts` + `index.ts`)
+- Semantic search with sentence-transformers
+- CLI and REST API interfaces
+- Interactive component browser
 
 ---
 
-## 🔄 Pipeline Architecture
+## 🚀 Quick Start
 
-```
-[React Repository]
-       ↓
-  [Extraction] - Node.js extractor analyzes React components
-       ↓
-component_docs.json - Structured component metadata
-       ↓
-  [Chunking] - Python processor creates searchable chunks
-       ↓
-component_chunks.json - Chunked text with embeddings metadata
-       ↓
-  [Indexing] - Create vector embeddings & store in ChromaDB
-       ↓
-   chromadb/ - Vector database with semantic search
-       ↓
-  [Query CLI] - Retrieve components via natural language
-       ↓
-  Component Results
-```
-
----
-
-## ⚙️ Installation & Setup
-
----
-
-### Prerequisites
-- Node.js (v14 or higher)
-- Python 3.8+
-- npm and pip package managers
-
-### 0.1 Install Node.js Dependencies
-
-Install required packages for React code extraction:
+### 1. Setup Repository Structure
 
 ```bash
+poc_rag_builder/
+└── web-extensions/          ← Place your React codebase here
+    └── src/components/
+```
+
+**Clone your React project:**
+```bash
+cd poc_rag_builder
+# git clone <your-react-repo-url> web-extensions
+```
+
+**Or use a different name:**
+```javascript
+// config/extraction.config.js
+repository: {
+  root: "your-project-name"  // Update this
+}
+```
+
+### 2. Install Dependencies
+
+```bash
+# Node.js dependencies (extraction)
 npm install
-```
 
-**Installs:**
-- `glob` - File pattern matching
-- `react-docgen-typescript` - React component parser
-- Other dependencies from package.json
-
-### 0.2 Install Python Dependencies
-
-Install required packages for chunking, indexing, and querying:
-
-```bash
+# Python dependencies (indexing & search)
 pip3 install -r requirements.txt
 ```
 
-**Installs:**
-- `chromadb` - Vector database
-- `sentence-transformers` - Embeddings model
-- `typer` - CLI framework
-- `requests` - HTTP client for LLM APIs
-- Other dependencies
+### 3. Build Index
 
-### 0.3 Verify Installation
+```bash
+# Quick build (recommended)
+python3 core/build_index.py
 
-Check if all dependencies are installed correctly:
+# Or with cleanup
+python3 core/build_index.py --clean
+```
 
+### 4. Query Components
+
+```bash
+# List all components
+python3 core/query_cli.py list-components
+
+# Get specific component
+python3 core/query_cli.py get-component-exact ProfilePage
+
+# Semantic search
+python3 core/query_cli.py query-find-component "user profile form"
+
+# Interactive browser
+python3 core/component_browser.py
+```
+
+---
+
+## 📦 Installation
+
+### Prerequisites
+- **Node.js** v14+ (for extraction)
+- **Python** 3.8+ (for indexing & search)
+- **npm** and **pip**
+
+### Install Dependencies
+
+**JavaScript packages:**
+```bash
+npm install
+```
+Installs: `glob`, `react-docgen-typescript`
+
+**Python packages:**
+```bash
+pip3 install -r requirements.txt
+```
+Installs: `chromadb`, `sentence-transformers`, `typer`, `fastapi`
+
+**Verify installation:**
 ```bash
 node --version
 python3 --version
 pip3 list | grep chromadb
-pip3 list | grep sentence-transformers
 ```
 
 ---
 
-## 🚀 Usage
+## � Usage Guide
 
-### Full Pipeline Commands
+### CLI Usage
 
-#### Option A: Quick Build (⭐ Recommended)
+#### Build Index Pipeline
 
-Simple pipeline without versioning - perfect for iterative development:
-
+**Option 1: Quick Build** ⭐ Recommended
 ```bash
-python3 core/build_index.py
+python3 core/build_index.py           # Build index
+python3 core/build_index.py --clean   # Clean rebuild
 ```
 
-**Optional cleanup before build:**
+**Parameter:**
+- `--clean` - Delete existing index before rebuilding (fresh start)
+
+**Option 2: Interactive Pipeline**
 ```bash
-python3 core/build_index.py --clean
+python3 core/component_browser.py     # Build + interactive query
 ```
 
-**Features:**
-- ✅ Simple and fast
-- ✅ No validation overhead
-- ✅ No versioning complexity
-- ✅ Perfect for iterative development
-
-**This command will:**
-1. Extract React components from source code
-2. Chunk the extracted components
-3. Index chunks into ChromaDB
+**Option 3: Step-by-Step**
+```bash
+node scripts/code_extractor.js        # 1. Extract components
+python3 core/ingest_components.py     # 2. Chunk components  
+python3 core/index_components.py      # 3. Index to ChromaDB
+```
 
 ---
 
-#### Option B: Interactive Pipeline
+#### Query Components
 
-Run complete pipeline with interactive query interface:
-
+**List Components**
 ```bash
-python3 core/component_browser.py
-```
-
-**This command will:**
-1. Extract React components from source code
-2. Chunk the extracted components
-3. Index chunks into ChromaDB
-4. Launch interactive query interface
-
----
-
-### Individual Pipeline Steps
-
-#### Step 1: Extract (React Code Extraction)
-
-Extract React components from repository:
-
-```bash
-node scripts/code_extractor.js
-```
-
-**Output:** `build-index/component_docs.json`
-
-#### Step 2: Ingest & Chunk
-
-Chunk extracted components into searchable pieces:
-
-```bash
-python3 core/ingest_components.py
-```
-
-**Output:** `build-index/component_chunks.json`
-
-#### Step 3: Index (Store in ChromaDB)
-
-Index chunks into vector database:
-
-```bash
-python3 core/index_components.py
-```
-
-**Output:** `build-index/chromadb/`
-
----
-
-### Query Commands
-
-#### List Components
-
-**List format (numbered, with file paths):**
-```bash
+# Numbered list with file paths (default)
 python3 core/query_cli.py list-components
-# OR
-python3 core/query_cli.py list-components --output-format list
-```
 
-**Example output:**
-```
-Found 2 component(s):
-[1] ProfilePage                    (components/ProfilePage/ProfilePage.component.tsx)
-[2] CustomDropdown                 (components/CustomDropdown/CustomDropdown.component.tsx)
-```
-
-**JSON format (structured data):**
-```bash
+# JSON output (structured data)
 python3 core/query_cli.py list-components --output-format json
-```
 
-**Example output:**
-```json
-[
-  {
-    "name": "ProfilePage",
-    "file": "src/components/ProfilePage/ProfilePage.component.tsx",
-    "component_id": "ProfilePage"
-  }
-]
-```
-
-**Names only (simple list):**
-```bash
+# Names only (simple list)
 python3 core/query_cli.py list-components --output-format names
 ```
 
-**Example output:**
-```
-ProfilePage
-CustomDropdown
-```
+**Parameter:**
+- `--output-format` - Output format: `list` (default), `json`, or `names`
 
----
-
-#### Get Component by Name
-
-Retrieve complete component with all files (component, interfaces, styles):
-
+**Get Component Details**
 ```bash
 python3 core/query_cli.py get-component-exact ProfilePage
 ```
 
-**Example output:**
-```
-📦 Component: ProfilePage
-📁 File: src/components/ProfilePage/ProfilePage.component.tsx
+Output includes:
+- ✅ Complete source code
+- ✅ TypeScript interfaces
+- ✅ Styles
+- ✅ Props documentation
 
-✅ Complete Component (All Files):
-================================================================================
-COMPONENT (ProfilePage.component.tsx):
-```tsx
-import React, { useState } from "react";
-...full component code...
-export default ProfilePage;
-```
-
-INTERFACES & TYPES (ProfilePage.interface.ts):
-```typescript
-export interface ProfilePageProps {
-  user: UserProfile;
-  onAccept?: (form: UserProfile) => void;
-  ...
-}
-```
-
-STYLES (ProfilePage.style.ts):
-```typescript
-const useProfilePageStyles = makeStyles({...});
-```
-================================================================================
-```
-
----
-
-#### Semantic Search
-
-Search for components using natural language:
-
+**Semantic Search**
 ```bash
-python3 core/query_cli.py query-find-component "user profile form with edit mode" --k 5
+python3 core/query_cli.py query-find-component "user profile form" --k 5
 ```
 
 **Parameters:**
-- `--k 5` - Return the top 5 most relevant results
-- `--per-component 10` - For each component, return up to 10 code snippets
+- `--k 5` - Number of top results to return (default: 5)
+- `--per-component 10` - Max code snippets per component (default: 10)
 
----
-
-### Interactive Mode
-
-Interactive component browser with selection menu:
-
+**Interactive Browser**
 ```bash
 python3 core/component_browser.py
 ```
-
-**Features:**
-- Lists all components
-- Select by number
+- Browse components by number
+- Press 's' for semantic search
 - View complete component code
-- Semantic search option ('s' key)
+
+---
+
+### API Usage
+
+#### Start Server
+
+```bash
+# Install server dependencies (first time only)
+pip3 install -r server/requirements.txt
+
+# Start FastAPI server
+python3 server/api_server.py
+```
+
+**Access:**
+- API: http://localhost:8000
+- Docs: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+---
+
+#### Quick API Examples
+
+**1. Health Check**
+```bash
+curl http://localhost:8000/api/health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "database": "connected",
+  "total_components": 245,
+  "total_chunks": 1847
+}
+```
+
+---
+
+**2. List All Components**
+```bash
+curl http://localhost:8000/api/components
+```
+
+Response:
+```json
+{
+  "total": 2,
+  "components": [
+    {
+      "name": "ProfilePage",
+      "file": "components/ProfilePage/ProfilePage.component.tsx",
+      "component_id": "ProfilePage"
+    }
+  ]
+}
+```
+
+---
+
+**3. Get Specific Component**
+```bash
+curl http://localhost:8000/api/components/ProfilePage
+```
+
+Response:
+```json
+{
+  "name": "ProfilePage",
+  "file": "components/ProfilePage/ProfilePage.component.tsx",
+  "source_code": "import React...",
+  "interfaces": "export interface ProfilePageProps {...}",
+  "styles": "const useStyles = makeStyles({...})",
+  "props": {...}
+}
+```
+
+---
+
+**4. Semantic Search**
+```bash
+curl -X POST http://localhost:8000/api/components/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "user profile form with edit mode",
+    "k": 5,
+    "per_component": 10
+  }'
+```
+
+**Parameters:**
+- `query` - Natural language search query
+- `k` - Number of top components to return (1-50)
+- `per_component` - Max code snippets per component (1-100)
+```
+
+Response:
+```json
+{
+  "query": "user profile form with edit mode",
+  "total_results": 5,
+  "components": [
+    {
+      "name": "ProfilePage",
+      "similarity_score": 0.89,
+      "file": "components/ProfilePage/ProfilePage.component.tsx",
+      "matched_chunks": [...]
+    }
+  ]
+}
+```
+
+---
+
+**5. Build Index**
+```bash
+curl -X POST http://localhost:8000/api/index/build
+```
+
+Response:
+```json
+{
+  "status": "success",
+  "message": "Index built successfully",
+  "stats": {
+    "components_extracted": 245,
+    "chunks_created": 1847,
+    "build_time_seconds": 12.4
+  }
+}
+```
+
+---
+
+**6. Rebuild Index (with cleanup)**
+```bash
+curl -X POST http://localhost:8000/api/index/rebuild
+```
+
+---
+
+#### JavaScript/TypeScript Client Example
+
+```typescript
+const API_BASE = 'http://localhost:8000/api';
+
+// List components
+async function listComponents() {
+  const res = await fetch(`${API_BASE}/components`);
+  const data = await res.json();
+  console.log(data.components);
+}
+
+// Get specific component
+async function getComponent(name: string) {
+  const res = await fetch(`${API_BASE}/components/${name}`);
+  return await res.json();
+}
+
+// Semantic search
+async function searchComponents(query: string) {
+  const res = await fetch(`${API_BASE}/components/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, k: 5 })
+  });
+  return await res.json();
+}
+
+// Usage
+const results = await searchComponents('profile form');
+console.log(results.components);
+```
+
+---
+
+#### Python Client Example
+
+```python
+import requests
+
+API_BASE = 'http://localhost:8000/api'
+
+# List components
+def list_components():
+    response = requests.get(f'{API_BASE}/components')
+    return response.json()
+
+# Get specific component
+def get_component(name: str):
+    response = requests.get(f'{API_BASE}/components/{name}')
+    return response.json()
+
+# Semantic search
+def search_components(query: str, k: int = 5):
+    response = requests.post(
+        f'{API_BASE}/components/search',
+        json={'query': query, 'k': k}
+    )
+    return response.json()
+
+# Usage
+results = search_components('profile form with validation')
+for comp in results['components']:
+    print(f"{comp['name']}: {comp['similarity_score']}")
+```
+
+---
+
+#### Complete API Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check with stats |
+| `/api/index/build` | POST | Build component index |
+| `/api/index/rebuild` | POST | Rebuild with cleanup |
+| `/api/components` | GET | List all components |
+| `/api/components/{name}` | GET | Get specific component |
+| `/api/components/search` | POST | Semantic search |
+
+**For detailed API documentation:** See [server/README.md](server/README.md) or visit http://localhost:8000/docs
 
 ---
 
 ## ⚙️ Configuration
 
-### Extraction Configuration
-
-Edit what gets extracted from the codebase:
+### Extraction Settings
 
 **File:** `config/extraction.config.js`
 
-**Key Settings:**
 ```javascript
-{
+module.exports = {
   repository: {
-    root: "web-extensions"
+    root: "web-extensions",      // Your React codebase location
+    buildDir: "build-index"       // Output directory
   },
+  
   files: {
     include: ["js", "jsx", "ts", "tsx"],
     exclude: ["**/node_modules/**", "**/tests/**"],
-    includeOnly: ["src/components/**"]  // Optional filter
+    includeOnly: ["src/components/**"]  // Optional: limit scope
   },
+  
   aggregation: {
     enabled: true,
-    confidenceThreshold: 3
+    patterns: {
+      component: /\.component\.(tsx|jsx)$/,
+      interface: /\.(interface|types)\.(ts|tsx)$/,
+      style: /\.(style|styles)\.(ts|tsx|js)$/,
+      index: /^index\.(ts|tsx|js)$/
+    }
+  },
+  
+  detection: {
+    componentDetectionThreshold: 3,  // 1-2: permissive, 3: balanced, 4-5: strict
+    componentDirs: ['components', 'ui', 'widgets', 'pages']
+  },
+  
+  logging: {
+    createBackup: true
   }
-}
+};
 ```
 
-### Chunking Configuration
+### Python Settings (Hardcoded)
 
-Edit how components are chunked and indexed:
+**Note:** Chunking, indexing, and query settings are hardcoded in Python source files:
 
-**File:** `config/chunking.config.py`
+- `core/index_components.py` - ChromaDB settings (collection, model, distance)
+- `core/ingest_components.py` - Chunking logic (chunk types, processing)
+- `core/query_cli.py` - Query parameters (n_results, thresholds)
 
-**Key Settings:**
-```python
-CHUNKING_CONFIG = {
-    "chunk_types": [...],
-    "max_chunk_size": 2000,
-    "include_metadata": True
-}
+---
 
-INDEXING_CONFIG = {
-    "batch_size": 100,
-    "embedding_model": "all-MiniLM-L6-v2"
-}
+## � Project Structure
+
+```
+poc_rag_builder/
+├── scripts/              # JavaScript extraction tools
+│   ├── code_extractor.js
+│   └── extraction_classes.js
+├── core/                 # Python RAG pipeline
+│   ├── ingest_components.py
+│   ├── index_components.py
+│   ├── query_cli.py
+│   └── embedding_utils.py
+├── build-index/          # Generated indexes
+│   ├── component_docs.json
+│   ├── component_chunks.json
+│   └── chromadb/
+└── Custom-ui/            # Sample React components
 ```
 
 ---
@@ -425,98 +529,135 @@ python3 core/build_index.py
 
 ```
 poc_rag_builder/                  # Main RAG builder project
-├── web-extensions/               # ← Target React repository (clone here!)
-│   ├── src/
-│   │   └── components/          # React components to be indexed
-│   ├── package.json
-│   └── tsconfig.json
-├── core/                         # Core Python modules
-│   ├── build_index.py           # Build pipeline (extract → chunk → index)
+├── web-extensions/               # ← Your React codebase goes here
+│   └── src/components/          # React components to index
+├── config/
+│   └── extraction.config.js      # Extraction settings (set repository.root)
+├── core/                         # Python RAG pipeline
+│   ├── build_index.py           # Main build pipeline
 │   ├── ingest_components.py     # Chunking processor
 │   ├── index_components.py      # ChromaDB indexer
 │   ├── query_cli.py             # Query CLI tool
-│   ├── component_browser.py     # Interactive component browser
+│   ├── component_browser.py     # Interactive browser
 │   └── embedding_utils.py       # Embedding utilities
-├── server/                       # FastAPI REST API server
-│   ├── api_server.py            # FastAPI application
-│   ├── requirements.txt         # Server dependencies
-│   └── README.md                # Server documentation
-├── config/
-│   ├── extraction.config.js      # Extraction settings (set repository.root here)
-│   └── chunking.config.py        # Chunking & indexing settings
 ├── scripts/
-│   └── code_extractor.js         # Node.js component extractor
-├── build-index/                  # Generated output directory
+│   ├── code_extractor.js        # Component extractor
+│   └── extraction_classes.js    # Extraction helpers
+├── read-chromadb/                # ChromaDB inspection tools
+│   └── read_chromadb.py         # Read/export ChromaDB data
+├── server/                       # FastAPI REST API
+│   ├── api_server.py            # API server
+│   ├── requirements.txt         # Server dependencies
+│   └── README.md                # API documentation
+├── build-index/                  # Generated outputs
 │   ├── component_docs.json       # Extracted components
 │   ├── component_chunks.json     # Chunked components
 │   └── chromadb/                 # Vector database
-├── requirements.txt              # Python dependencies (core)
+├── requirements.txt              # Python dependencies
 ├── package.json                  # Node.js dependencies
-├── FASTAPI-DOCUMENTATION.md      # Complete API documentation
 └── README.md                     # This file
 ```
 
-**Key Notes:**
-- `web-extensions/` is your **target React repository** - clone it into this folder
-- `core/` contains all the RAG system Python modules
-- `server/` contains the FastAPI REST API server for web integration
-- `config/extraction.config.js` sets `repository.root: "web-extensions"` to point to this folder
-- Change the root path if your repository has a different name
-- The RAG builder will scan the repository for components based on your config
-
 ---
 
-## 🌐 REST API Server
+## 🔄 Pipeline Flow
 
-For web-based access to the RAG system, a FastAPI server is available in the `server/` directory.
-
-### Quick Start
-
-```bash
-# Install server dependencies
-pip3 install -r server/requirements.txt
-
-# Start the server
-python3 server/api_server.py
 ```
-
-**Access Points:**
-- API Base: http://localhost:8000
-- Swagger Docs: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-### Available Endpoints
-
-- `GET /api/health` - Health check with database stats
-- `POST /api/index/build` - Build component index
-- `POST /api/index/rebuild` - Rebuild with validation
-- `GET /api/components` - List all components
-- `GET /api/components/{name}` - Get specific component
-- `POST /api/components/search` - Semantic search
-
-For complete API documentation with examples, see [server/README.md](server/README.md).
+[Your React Code]
+       ↓
+  [Extract] ────→ component_docs.json
+       ↓
+   [Chunk] ────→ component_chunks.json
+       ↓
+   [Index] ────→ chromadb/
+       ↓
+   [Query] ────→ Search Results
+```
 
 ---
 
 ## 🛠️ Troubleshooting
 
 ### Empty Extraction
-If `component_docs.json` is empty:
-1. Check `config/extraction.config.js` for correct `includeOnly` patterns
-2. Verify the repository path is correct
-3. Ensure component files match the include patterns
+**Issue:** `component_docs.json` is empty
 
-### Query Returns No Results
-If queries return no components:
-1. Verify the index was built: `ls -la build-index/chromadb/`
-2. Check that chunks were created: `cat build-index/component_chunks.json`
-3. Rebuild the index: `python3 build_index.py --clean`
+**Solutions:**
+1. Check `config/extraction.config.js` - verify `repository.root` path
+2. Check `includeOnly` patterns match your component structure
+3. Lower `componentDetectionThreshold` (try 2 instead of 3)
+4. Verify files match include patterns (`.tsx`, `.jsx`)
 
-### Missing Dependencies
-If you encounter import errors:
+### No Query Results
+**Issue:** Queries return no components
+
+**Solutions:**
+1. Verify index exists: `ls -la build-index/chromadb/`
+2. Check chunks created: `cat build-index/component_chunks.json | grep -c '"text"'`
+3. Rebuild index: `python3 core/build_index.py --clean`
+4. Check ChromaDB connection in `core/index_components.py`
+
+### Import Errors
+**Issue:** Missing Python modules
+
+**Solutions:**
 1. Reinstall dependencies: `pip3 install -r requirements.txt`
-2. Verify installation: `pip3 list | grep chromadb`
-3. Check Python version: `python3 --version` (requires 3.8+)
+2. Use virtual environment:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip3 install -r requirements.txt
+   ```
+3. Check Python version: `python3 --version` (need 3.8+)
+
+### API Server Issues
+**Issue:** Server won't start or connection refused
+
+**Solutions:**
+1. Install server dependencies: `pip3 install -r server/requirements.txt`
+2. Check port 8000 is free: `lsof -i :8000`
+3. Try different port: `uvicorn server.api_server:app --port 8001`
+4. Check logs for errors
+
+---
+
+## 📚 Quick Command Reference
+
+### Essential Commands
+
+| Task | Command |
+|------|---------|
+| **Build index** | `python3 core/build_index.py` |
+| **Clean rebuild** | `python3 core/build_index.py --clean` |
+| **List components** | `python3 core/query_cli.py list-components` |
+| **Get component** | `python3 core/query_cli.py get-component-exact <name>` |
+| **Search** | `python3 core/query_cli.py query-find-component "<query>"` |
+| **Interactive** | `python3 core/component_browser.py` |
+| **Start API** | `python3 server/api_server.py` |
+
+### Step-by-Step Commands
+
+| Step | Command | Output |
+|------|---------|--------|
+| **1. Extract** | `node scripts/code_extractor.js` | `component_docs.json` |
+| **2. Chunk** | `python3 core/ingest_components.py` | `component_chunks.json` |
+| **3. Index** | `python3 core/index_components.py` | `chromadb/` |
+
+### ChromaDB Inspection
+
+| Task | Command |
+|------|---------|
+| **List all data** | `python3 read-chromadb/read_chromadb.py list` |
+| **Search data** | `python3 read-chromadb/read_chromadb.py search "query"` |
+| **Export to JSON** | `python3 read-chromadb/read_chromadb.py export` |
+
+---
+
+## 📖 Additional Documentation
+
+- **API Documentation:** [server/README.md](server/README.md)
+- **Config Guide:** [config/README.md](config/README.md)
+- **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **Reading ChromaDB:** [docs/READING_CHROMADB.md](docs/READING_CHROMADB.md)
 
 ---
 
