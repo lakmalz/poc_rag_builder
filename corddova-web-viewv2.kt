@@ -92,3 +92,14 @@ public final class SPANavigator {
                 .replace("'", "\\'");
     }
 }
+
+SPANavigator navigator = new SPANavigator(appView, uiHandlerJSExe);
+
+navigator.navigate(
+        "ssoLogin",
+        new SPANavigator.MaskController() {
+            @Override public void show() { showMask(); }
+            @Override public void hide() { hideMask(); }
+        },
+        "ssoLogin"
+);
